@@ -379,6 +379,19 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
 }
 
 /**
+ * The home screen with the press-and-hold menu over it when [menu] is set. While the menu is
+ * open, everything behind it is hidden from screen readers, so they can't wander onto apps
+ * under the dimmed background.
+ */
+@Composable
+fun WithHoldMenu(menu: (@Composable () -> Unit)?, content: @Composable () -> Unit) {
+    Box {
+        Box(if (menu != null) Modifier.clearAndSetSemantics { } else Modifier) { content() }
+        menu?.invoke()
+    }
+}
+
+/**
  * The press-and-hold menu: every choice is a word with one plain line saying what it does.
  * Tapping outside it, Cancel, or Back closes it.
  */
@@ -417,6 +430,7 @@ fun HoldMenu(
                     app.name,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.semantics { heading() },
                 )
             }

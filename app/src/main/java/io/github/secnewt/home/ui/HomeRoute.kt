@@ -2,7 +2,6 @@ package io.github.secnewt.home.ui
 
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,7 +95,29 @@ fun HomeRoute(
         else -> HomeView.Favorites
     }
 
-    Box {
+    val held = menuFor?.let { key -> apps.firstOrNull { it.key == key } }
+    val menu: (@Composable () -> Unit)? = if (held == null) null else @Composable {
+        val app: LauncherApp = held
+        val index = favoriteKeys.indexOf(app.key)
+        HoldMenu(
+            app = app,
+            isFavorite = index >= 0,
+            canMoveUp = index > 0,
+            canMoveDown = index >= 0 && index < favoriteKeys.lastIndex,
+            onToggleFavorite = {
+                onFavoritesChange(Favorites.toggle(favoriteKeys, app.key))
+                menuFor = null
+            },
+            onMove = { by -> onFavoritesChange(Favorites.move(favoriteKeys, app.key, by)) },
+            onAppInfo = {
+                menuFor = null
+                onAppInfo(app)
+            },
+            onDismiss = { menuFor = null },
+        )
+    }
+
+    WithHoldMenu(menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -113,25 +134,5 @@ fun HomeRoute(
             onDate = onDate,
             onShowAll = { showAll = true },
         )
-        val held = menuFor?.let { key -> apps.firstOrNull { it.key == key } }
-        if (held != null) {
-            val index = favoriteKeys.indexOf(held.key)
-            HoldMenu(
-                app = held,
-                isFavorite = index >= 0,
-                canMoveUp = index > 0,
-                canMoveDown = index >= 0 && index < favoriteKeys.lastIndex,
-                onToggleFavorite = {
-                    onFavoritesChange(Favorites.toggle(favoriteKeys, held.key))
-                    menuFor = null
-                },
-                onMove = { by -> onFavoritesChange(Favorites.move(favoriteKeys, held.key, by)) },
-                onAppInfo = {
-                    menuFor = null
-                    onAppInfo(held)
-                },
-                onDismiss = { menuFor = null },
-            )
-        }
     }
 }

@@ -1,6 +1,5 @@
 package io.github.secnewt.home.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -113,36 +112,38 @@ class HomeScreenTest {
 
     @Test
     fun holdMenuOnAFavorite() = render("hold_menu_favorite", dark = true) {
-        Box {
-            Home()
-            HoldMenu(
-                app = favorites[2],
-                isFavorite = true,
-                canMoveUp = true,
-                canMoveDown = true,
-                onToggleFavorite = {},
-                onMove = {},
-                onAppInfo = {},
-                onDismiss = {},
-            )
-        }
+        WithHoldMenu(
+            menu = {
+                HoldMenu(
+                    app = favorites[2],
+                    isFavorite = true,
+                    canMoveUp = true,
+                    canMoveDown = true,
+                    onToggleFavorite = {},
+                    onMove = {},
+                    onAppInfo = {},
+                    onDismiss = {},
+                )
+            },
+        ) { Home() }
     }
 
     @Test
     fun holdMenuLargeText() = render("hold_menu_200_percent", dark = false, fontScale = 2f) {
-        Box {
-            Home()
-            HoldMenu(
-                app = apps.last(),
-                isFavorite = false,
-                canMoveUp = false,
-                canMoveDown = false,
-                onToggleFavorite = {},
-                onMove = {},
-                onAppInfo = {},
-                onDismiss = {},
-            )
-        }
+        WithHoldMenu(
+            menu = {
+                HoldMenu(
+                    app = apps.last(),
+                    isFavorite = false,
+                    canMoveUp = false,
+                    canMoveDown = false,
+                    onToggleFavorite = {},
+                    onMove = {},
+                    onAppInfo = {},
+                    onDismiss = {},
+                )
+            },
+        ) { Home() }
     }
 
     @Test
