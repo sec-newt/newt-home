@@ -11,13 +11,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.LauncherApp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 /** How long the only match waits before opening, so you can see it and keep typing to cancel. */
 private const val AUTO_OPEN_DELAY_MS = 700L
@@ -85,7 +85,8 @@ fun HomeRoute(
         }
     }
     val context = LocalContext.current
-    val locale = Locale.getDefault()
+    // Follows the phone's language, and updates if it changes.
+    val locale = LocalLocale.current.platformLocale
     val clock = SimpleDateFormat(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm", locale).format(Date(now))
     val date = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale).format(Date(now))
 
