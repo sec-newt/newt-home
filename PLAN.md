@@ -64,7 +64,7 @@ newt@home:~$ date
 - **Loose matching:** `mgnf` finds Magnifier. It also matches folder names, my own search words and Android's app type (game, music, maps).
 - **Each result says why it matched**, for example "Your keyword: bank" or "In Blind tools".
 - **Results are ranked by use.** The apps I open most come first.
-- **Opens the only match:** when exactly one app's *name* matches (`sign` → Signal), it opens by itself after about ¾ second. Typing another letter cancels it. Keyword and folder matches still wait for Enter. This can be switched off.
+- **Opens the only match:** when exactly one app has the typed letters together in its name (`sig` → Signal), it opens by itself after about ¾ second. Typing another letter cancels it. Loose matches (letters scattered through a name), keyword and folder matches never open anything by themselves. This can be switched off.
 - **Enter opens the top result.**
 - **One command:** `ls` lists every app. Plain names always work, so there's nothing to learn.
 
@@ -134,7 +134,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 - [x] Create the GitHub repo
 - [x] Clickable mock-up
-- [ ] Project skeleton and APK build on GitHub Actions (copy Newt Phone's setup: CI checks, signed releases, Obtainium)
+- [x] Project skeleton and APK build on GitHub Actions (copy Newt Phone's setup: CI checks, signed releases, Obtainium)
 - [ ] Phase 1 build
 
 ## GrapheneOS notes
