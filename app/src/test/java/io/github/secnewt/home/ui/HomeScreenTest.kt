@@ -113,6 +113,7 @@ class HomeScreenTest {
     @Test
     fun holdMenuOnAFavorite() = render("hold_menu_favorite", dark = true) {
         WithHoldMenu(
+            menuOpen = true,
             menu = {
                 HoldMenu(
                     app = favorites[2],
@@ -131,6 +132,7 @@ class HomeScreenTest {
     @Test
     fun holdMenuLargeText() = render("hold_menu_200_percent", dark = false, fontScale = 2f) {
         WithHoldMenu(
+            menuOpen = true,
             menu = {
                 HoldMenu(
                     app = apps.last(),

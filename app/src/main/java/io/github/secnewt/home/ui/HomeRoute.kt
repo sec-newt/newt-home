@@ -96,28 +96,30 @@ fun HomeRoute(
     }
 
     val held = menuFor?.let { key -> apps.firstOrNull { it.key == key } }
-    val menu: (@Composable () -> Unit)? = if (held == null) null else @Composable {
-        val app: LauncherApp = held
-        val index = favoriteKeys.indexOf(app.key)
-        HoldMenu(
-            app = app,
-            isFavorite = index >= 0,
-            canMoveUp = index > 0,
-            canMoveDown = index >= 0 && index < favoriteKeys.lastIndex,
-            onToggleFavorite = {
-                onFavoritesChange(Favorites.toggle(favoriteKeys, app.key))
-                menuFor = null
-            },
-            onMove = { by -> onFavoritesChange(Favorites.move(favoriteKeys, app.key, by)) },
-            onAppInfo = {
-                menuFor = null
-                onAppInfo(app)
-            },
-            onDismiss = { menuFor = null },
-        )
+    val menu: @Composable () -> Unit = {
+        if (held != null) {
+            val app = held
+            val index = favoriteKeys.indexOf(app.key)
+            HoldMenu(
+                app = app,
+                isFavorite = index >= 0,
+                canMoveUp = index > 0,
+                canMoveDown = index >= 0 && index < favoriteKeys.lastIndex,
+                onToggleFavorite = {
+                    onFavoritesChange(Favorites.toggle(favoriteKeys, app.key))
+                    menuFor = null
+                },
+                onMove = { by -> onFavoritesChange(Favorites.move(favoriteKeys, app.key, by)) },
+                onAppInfo = {
+                    menuFor = null
+                    onAppInfo(app)
+                },
+                onDismiss = { menuFor = null },
+            )
+        }
     }
 
-    WithHoldMenu(menu) {
+    WithHoldMenu(menuOpen = held != null, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
