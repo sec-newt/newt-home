@@ -43,9 +43,9 @@ Mock-up of this direction (v2): the same link as above.
 
 Nothing on it needs the keyboard. Not everything has to be visible at once, as long as it's quick to reach.
 
-**Three screens (next):** home in the middle (clock, today's next event, favorites, prompt), folders a swipe left, all apps and search a swipe up. Buttons above the prompt do the same, so swiping is never the only way. This replaces the two columns, which are too cramped at large text sizes.
+**Three screens:** home in the middle (clock, today's next event, favorites, prompt), folders a swipe right, all apps a swipe up (past the end of the list, so scrolling never switches screens by accident). Buttons above the prompt do the same, so swiping is never the only way. This replaced the two columns, which were too cramped at large text sizes.
 
-The first version, still in use until the three screens are built:
+The first version, for reference:
 
 ```
 (▪ = the app's icon)
@@ -156,7 +156,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Home screen, favorites, prompt search, opening the only match, All apps
   - [x] Folders as a tree in a second column, remembered open folder, search by folder name
   - [x] The gadget look: scanlines and ASCII newt, boot type-out, glow, folder colors
-  - [ ] Three screens: home, folders (swipe left), all apps (swipe up)
+  - [x] Three screens: home, folders (swipe right), all apps (swipe up)
   - [ ] Today's events under the date, and the day's list
   - [ ] Commands at the prompt
   - [ ] Hide apps, search words, letter strip and letter grid in All apps

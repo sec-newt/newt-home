@@ -1,6 +1,21 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
@@ -83,21 +98,59 @@ import kotlin.math.absoluteValue
 @Immutable
 data class FolderView(val name: String, val apps: List<LauncherApp>)
 
-/** What the output area above the prompt is showing. */
-sealed interface HomeView {
-    /** The resting home screen: favorites and the folder tree. */
-    data object Favorites : HomeView
+/** The three screens: home in the middle, folders a swipe away to the left, all apps below. */
+enum class Screen { FOLDERS, HOME, APPS }
 
-    /** Every app, A–Z (`ls`). */
-    data object AllApps : HomeView
+/** What home shows above the prompt. */
+sealed interface HomeView {
+    /** The resting home screen: favorites. */
+    data object Favorites : HomeView
 
     /** Search results for what's typed at the prompt. */
     data class Results(val query: String, val results: List<AppSearch.Result<LauncherApp>>) : HomeView
 }
 
+/** How far past the end of a list a drag has to go to switch screens. */
+private val EDGE_PULL = 96.dp
+
 /**
- * The home screen: a terminal session you can tap. The time and date sit at the top (each
- * opens its app), the output in the middle, and the `~$` prompt at the bottom.
+ * Calls [onPull] when a drag keeps going past the end of a list: upward past the bottom
+ * (`up`), or downward past the top. If the list is short and doesn't scroll, any drag that
+ * far counts. Each drag counts once; lifting the finger starts over.
+ */
+@Composable
+private fun rememberEdgePull(up: Boolean, onPull: () -> Unit): NestedScrollConnection {
+    val threshold = with(LocalDensity.current) { EDGE_PULL.toPx() }
+    val latest = rememberUpdatedState(onPull)
+    return remember(up, threshold) {
+        object : NestedScrollConnection {
+            var pulled = 0f
+            var fired = false
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || fired) return Offset.Zero
+                val toward = if (up) -available.y else available.y
+                if (toward > 0f) pulled += toward else if (consumed.y != 0f) pulled = 0f
+                if (pulled >= threshold) {
+                    fired = true
+                    latest.value()
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                pulled = 0f
+                fired = false
+                return Velocity.Zero
+            }
+        }
+    }
+}
+
+/**
+ * The launcher: a terminal you can tap, on three screens. Home has the time and date (each
+ * opens its app), favorites or search results, and the `~$` prompt. Swipe right for folders,
+ * up for all apps; the buttons above the prompt do the same, so swiping is never required.
  */
 @Composable
 fun HomeScreen(
@@ -119,89 +172,265 @@ fun HomeScreen(
     onNewFolder: () -> Unit,
     onClock: () -> Unit,
     onDate: () -> Unit,
-    onShowAll: () -> Unit,
     folderOf: (LauncherApp) -> String? = { null },
     bootKey: Int = 0,
     animateBoot: Boolean = false,
     status: DeviceStatus = DeviceStatus(),
+    screen: Screen = Screen.HOME,
+    onScreen: (Screen) -> Unit = {},
 ) {
+    // Folders and home sit side by side; all apps slides up over them.
+    val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
+    LaunchedEffect(screen) {
+        val page = if (screen == Screen.FOLDERS) 0 else 1
+        if (screen != Screen.APPS && pager.currentPage != page) pager.animateScrollToPage(page)
+    }
+    val latestOnScreen = rememberUpdatedState(onScreen)
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.collect { page ->
+            latestOnScreen.value(if (page == 0) Screen.FOLDERS else Screen.HOME)
+        }
+    }
+    val appsOpen = screen == Screen.APPS
+
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         GadgetBackground()
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
             StatusLine(status)
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                item {
-                    Column(Modifier.padding(top = 12.dp)) {
-                        BootLine("date", bootKey, animateBoot) { alpha ->
-                            ClockAndDate(clock, date, onClock, onDate, Modifier.bootFade(alpha))
+            Box(Modifier.weight(1f)) {
+                HorizontalPager(
+                    state = pager,
+                    userScrollEnabled = !appsOpen,
+                    // Hidden behind all apps: screen readers shouldn't reach it.
+                    modifier = if (appsOpen) Modifier.clearAndSetSemantics { } else Modifier,
+                ) { page ->
+                    if (page == 0) {
+                        FoldersPage(folders, openFolder, onOpen, onHold, onToggleFolder, onHoldFolder, onNewFolder) {
+                            onScreen(Screen.HOME)
                         }
+                    } else {
+                        HomePage(
+                            clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
+                            onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
+                        )
                     }
                 }
-                when (view) {
-                    HomeView.Favorites -> {
-                        item {
-                            HomeColumns(
-                                favorites = {
-                                    PromptLine("ls favs", short = true)
-                                    if (favorites.isEmpty()) Hint("# press and hold any app to add it here")
-                                    for (app in favorites) AppRow(app, onOpen = onOpen, onHold = onHold, compact = true)
-                                    AllAppsRow(onShowAll)
-                                },
-                                tree = {
-                                    PromptLine("tree", short = true)
-                                    for ((index, folder) in folders.withIndex()) {
-                                        val open = folder.name == openFolder
-                                        FolderRow(folder, open, folderColor(index), onToggleFolder, onHoldFolder)
-                                        if (open) {
-                                            if (folder.apps.isEmpty()) {
-                                                Hint("└ empty. press and hold an app, then Move to folder", top = 0.dp)
-                                            }
-                                            for ((j, app) in folder.apps.withIndex()) {
-                                                val branch = if (j == folder.apps.lastIndex) "└" else "├"
-                                                AppRow(app, onOpen = onOpen, onHold = onHold, compact = true, branch = branch)
-                                            }
-                                        }
-                                    }
-                                    NewFolderRow(onNewFolder)
-                                },
-                            )
-                        }
-                        item { Hint("# or type a name below") }
-                    }
-                    HomeView.AllApps -> {
-                        item { PromptLine("ls") }
-                        items(allApps, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
-                    }
-                    is HomeView.Results -> {
-                        item { PromptLine("find ${view.query.trim()}") }
-                        if (view.results.isEmpty()) {
-                            item { Hint("# no app matches “${view.query.trim()}”") }
-                        }
-                        itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
-                            val note = when {
-                                i > 0 -> null
-                                r.item == opening -> "only match · opening…"
-                                else -> "Enter opens"
-                            }
-                            val why = if (r.match == AppSearch.Match.IN_FOLDER) folderOf(r.item)?.let { "in $it/" } else null
-                            AppRow(
-                                r.item,
-                                note = listOfNotNull(why, note).joinToString(" · ").ifEmpty { null },
-                                highlighted = i == 0,
-                                onOpen = onOpen,
-                                onHold = onHold,
-                            )
-                        }
+                // The plain version, not the Column one (this sits inside a Box inside a Column).
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = appsOpen,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut(),
+                ) {
+                    AppsPage(allApps, onOpen, onHold) { onScreen(Screen.HOME) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomePage(
+    clock: String,
+    date: String,
+    view: HomeView,
+    favorites: List<LauncherApp>,
+    query: String,
+    opening: LauncherApp?,
+    onQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onOpen: (LauncherApp) -> Unit,
+    onHold: (LauncherApp) -> Unit,
+    onClock: () -> Unit,
+    onDate: () -> Unit,
+    folderOf: (LauncherApp) -> String?,
+    bootKey: Int,
+    animateBoot: Boolean,
+    onScreen: (Screen) -> Unit,
+) {
+    val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .nestedScroll(pullUp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            item {
+                Column(Modifier.padding(top = 12.dp)) {
+                    BootLine("date", bootKey, animateBoot) { alpha ->
+                        ClockAndDate(clock, date, onClock, onDate, Modifier.bootFade(alpha))
                     }
                 }
             }
-            Prompt(query, onQueryChange, onSubmit)
+            when (view) {
+                HomeView.Favorites -> {
+                    item { PromptLine("ls favs", short = true) }
+                    if (favorites.isEmpty()) {
+                        item { Hint("# press and hold any app to add it here") }
+                    }
+                    items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
+                }
+                is HomeView.Results -> {
+                    item { PromptLine("find ${view.query.trim()}") }
+                    if (view.results.isEmpty()) {
+                        item { Hint("# no app matches “${view.query.trim()}”") }
+                    }
+                    itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
+                        val note = when {
+                            i > 0 -> null
+                            r.item == opening -> "only match · opening…"
+                            else -> "Enter opens"
+                        }
+                        val why = if (r.match == AppSearch.Match.IN_FOLDER) folderOf(r.item)?.let { "in $it/" } else null
+                        AppRow(
+                            r.item,
+                            note = listOfNotNull(why, note).joinToString(" · ").ifEmpty { null },
+                            highlighted = i == 0,
+                            onOpen = onOpen,
+                            onHold = onHold,
+                        )
+                    }
+                }
+            }
         }
+        NavRow {
+            NavButton("← Folders", "Folders", Modifier.weight(1f)) { onScreen(Screen.FOLDERS) }
+            NavButton("All apps ↑", "All apps", Modifier.weight(1f)) { onScreen(Screen.APPS) }
+        }
+        Prompt(query, onQueryChange, onSubmit)
+    }
+}
+
+@Composable
+private fun FoldersPage(
+    folders: List<FolderView>,
+    openFolder: String?,
+    onOpen: (LauncherApp) -> Unit,
+    onHold: (LauncherApp) -> Unit,
+    onToggleFolder: (String) -> Unit,
+    onHoldFolder: (String) -> Unit,
+    onNewFolder: () -> Unit,
+    onHome: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            item { PromptLine("tree", short = true) }
+            for ((index, folder) in folders.withIndex()) {
+                val open = folder.name == openFolder
+                item(key = "folder:${folder.name}") {
+                    FolderRow(folder, open, folderColor(index), onToggleFolder, onHoldFolder)
+                }
+                if (open) {
+                    if (folder.apps.isEmpty()) {
+                        item { Hint("└ empty. press and hold an app, then Move to folder", top = 0.dp) }
+                    }
+                    itemsIndexed(folder.apps, key = { _, a -> "in:${folder.name}:${a.key}" }) { j, app ->
+                        val branch = if (j == folder.apps.lastIndex) "└" else "├"
+                        AppRow(app, onOpen = onOpen, onHold = onHold, branch = branch)
+                    }
+                }
+            }
+            item { NewFolderRow(onNewFolder) }
+            item { Hint("# press and hold a folder to rename, move or delete it") }
+        }
+        NavRow { NavButton("Home →", "Home", Modifier.weight(1f), onHome) }
+    }
+}
+
+@Composable
+private fun AppsPage(
+    allApps: List<LauncherApp>,
+    onOpen: (LauncherApp) -> Unit,
+    onHold: (LauncherApp) -> Unit,
+    onHome: () -> Unit,
+) {
+    val pullDown = rememberEdgePull(up = false, onPull = onHome)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        GadgetBackground()
+        Column(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .nestedScroll(pullDown),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                item { PromptLine("ls") }
+                var letter = ""
+                for (app in allApps) {
+                    // Grouped the way the list is sorted (accents ignored), so each letter appears once.
+                    val first = AppSearch.normalize(app.name).take(1).uppercase()
+                    if (first != letter) {
+                        letter = first
+                        item(key = "letter:$first") { LetterHeader(first) }
+                    }
+                    item(key = app.key) { AppRow(app, onOpen = onOpen, onHold = onHold) }
+                }
+            }
+            NavRow { NavButton("↓ Home", "Home", Modifier.weight(1f), onHome) }
+        }
+    }
+}
+
+@Composable
+private fun LetterHeader(letter: String) {
+    Text(
+        letter,
+        fontFamily = NewtFonts.Mono,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        color = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier
+            .padding(start = 4.dp, top = 12.dp, bottom = 2.dp)
+            .semantics { heading() },
+    )
+}
+
+@Composable
+private fun NavRow(content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 10.dp, end = 10.dp, top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        content = content,
+    )
+}
+
+/** A screen switch with words, so swiping is never the only way. [spoken] drops the arrows. */
+@Composable
+private fun NavButton(label: String, spoken: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactions = remember { MutableInteractionSource() }
+    Box(
+        modifier
+            .heightIn(min = 52.dp)
+            .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .clickable(interactionSource = interactions, indication = LocalIndication.current, onClick = onClick)
+            .semantics { contentDescription = spoken },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.clearAndSetSemantics { },
+        )
     }
 }
 
@@ -304,25 +533,6 @@ private fun Hint(text: String, top: Dp = 12.dp) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = top, start = 4.dp),
     )
-}
-
-/**
- * Favorites on the left and the folder tree on the right. With large text (150% and up) the
- * columns would be too narrow to read, so they stack: favorites first, then folders.
- */
-@Composable
-private fun HomeColumns(favorites: @Composable () -> Unit, tree: @Composable () -> Unit) {
-    if (LocalDensity.current.fontScale >= 1.5f) {
-        Column {
-            favorites()
-            tree()
-        }
-    } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Column(Modifier.weight(0.9f)) { favorites() }
-            Column(Modifier.weight(1.1f)) { tree() }
-        }
-    }
 }
 
 /** The blue-to-purple outline used across Newt apps. */
@@ -539,31 +749,6 @@ private fun NewFolderRow(onNewFolder: () -> Unit) {
             },
             fontFamily = NewtFonts.Mono,
             fontSize = 17.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-/** `› ls` — every app, for when you don't want to type. */
-@Composable
-private fun AllAppsRow(onShowAll: () -> Unit) {
-    Row(
-        Modifier
-            .padding(top = 8.dp)
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onShowAll)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("› ") }
-                append("All apps")
-            },
-            fontFamily = NewtFonts.Mono,
-            fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }

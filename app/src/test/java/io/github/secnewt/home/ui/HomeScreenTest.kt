@@ -84,7 +84,8 @@ class HomeScreenTest {
         favs: List<LauncherApp> = favorites,
         openFolder: String? = "Productivity",
         onOpen: (LauncherApp) -> Unit = {},
-        onShowAll: () -> Unit = {},
+        screen: Screen = Screen.HOME,
+        onScreen: (Screen) -> Unit = {},
         onToggleFolder: (String) -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
@@ -105,7 +106,8 @@ class HomeScreenTest {
         onNewFolder = {},
         onClock = {},
         onDate = {},
-        onShowAll = onShowAll,
+        screen = screen,
+        onScreen = onScreen,
         folderOf = { a -> folders.firstOrNull { a in it.apps }?.name },
         status = DeviceStatus(battery = 54, connection = Connection.WIFI),
     )
@@ -141,7 +143,15 @@ class HomeScreenTest {
     fun homeLargeText() = render("home_200_percent", dark = true, fontScale = 2f) { Home() }
 
     @Test
-    fun homeEmptyFolderOpen() = render("home_empty_folder_open", dark = false) { Home(openFolder = "AI") }
+    fun foldersDark() = render("folders_dark", dark = true) { Home(screen = Screen.FOLDERS) }
+
+    @Test
+    fun foldersLargeText() = render("folders_200_percent", dark = false, fontScale = 2f) { Home(screen = Screen.FOLDERS) }
+
+    @Test
+    fun foldersEmptyFolderOpen() = render("folders_empty_folder_open", dark = false) {
+        Home(screen = Screen.FOLDERS, openFolder = "AI")
+    }
 
     @Test
     fun homeNoFavoritesYet() = render("home_no_favorites", dark = true) { Home(favs = emptyList(), openFolder = null) }
@@ -161,7 +171,10 @@ class HomeScreenTest {
     fun searchNoMatch() = render("search_no_match", dark = true) { Home(view = results("zz"), query = "zz") }
 
     @Test
-    fun allApps() = render("all_apps", dark = true) { Home(view = HomeView.AllApps) }
+    fun allApps() = render("all_apps", dark = true) { Home(screen = Screen.APPS) }
+
+    @Test
+    fun allAppsLargeText() = render("all_apps_200_percent", dark = false, fontScale = 2f) { Home(screen = Screen.APPS) }
 
     @Test
     fun holdMenuOnAFavorite() = render("hold_menu_favorite", dark = true) {
@@ -237,21 +250,51 @@ class HomeScreenTest {
     @Test
     fun tappingAnAppOpensIt() {
         var opened: LauncherApp? = null
-        var showedAll = false
-        var toggled: String? = null
+        var went: Screen? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
-                Home(onOpen = { opened = it }, onShowAll = { showedAll = true }, onToggleFolder = { toggled = it })
-            }
+            NewtTheme(darkTheme = true) { Home(onOpen = { opened = it }, onScreen = { went = it }) }
         }
         composeRule.onNodeWithText("Signal").assertIsDisplayed().performClick()
         assertEquals("Signal", opened?.name)
+        composeRule.onNodeWithContentDescription("All apps").performClick()
+        assertEquals(Screen.APPS, went)
+        composeRule.onNodeWithContentDescription("Folders").performClick()
+        assertEquals(Screen.FOLDERS, went)
+    }
+
+    @Test
+    fun foldersOpenAndCloseInPlace() {
+        var opened: LauncherApp? = null
+        var toggled: String? = null
+        var went: Screen? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                Home(
+                    screen = Screen.FOLDERS,
+                    onOpen = { opened = it },
+                    onToggleFolder = { toggled = it },
+                    onScreen = { went = it },
+                )
+            }
+        }
         composeRule.onNodeWithText("Proton Mail").performClick()
         assertEquals("Proton Mail", opened?.name)
-        composeRule.onNodeWithText("All apps", substring = true).performClick()
-        assertEquals(true, showedAll)
         composeRule.onNodeWithText("Games/").performClick()
         assertEquals("Games", toggled)
+        composeRule.onNodeWithContentDescription("Home").performClick()
+        assertEquals(Screen.HOME, went)
+    }
+
+    @Test
+    fun allAppsListsEveryApp() {
+        var went: Screen? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) }
+        }
+        composeRule.onNodeWithText("Camera").assertIsDisplayed()
+        composeRule.onNodeWithText("Magnifier").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Home").performClick()
+        assertEquals(Screen.HOME, went)
     }
 
     @Test
@@ -277,7 +320,6 @@ class HomeScreenTest {
                     onNewFolder = {},
                     onClock = {},
                     onDate = {},
-                    onShowAll = {},
                     bootKey = 1,
                     animateBoot = true,
                 )

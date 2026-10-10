@@ -15,15 +15,17 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 
 - **Time and date at the top.** Tap the time to open the clock app, or the date to
   open the calendar app (GrapheneOS has none built in; Etar on F-Droid works).
-- **Two columns:** favorites on the left (`~$ ls favs`), folders as a tree on the
-  right (`~$ tree`). With very large text they stack instead.
+- **Three screens.** Home has the time, date and favorites (`~$ ls favs`). Swipe right
+  for folders (`~$ tree`), or swipe up past the end of the list for all apps (`~$ ls`).
+  The **← Folders** and **All apps ↑** buttons above the prompt do the same, so
+  swiping is never required. Back and Home return to the home screen.
 - **Favorites.** Press and hold any app and choose **Add to favorites**. In the same
   menu, **Move up** and **Move down** change their order.
 - **Folders.** Tap a folder to open it in place; the one you opened last stays open.
   Press and hold an app and choose **Move to folder** (or make a new one there).
   Press and hold a folder to rename, move or delete it; deleting a folder never
   removes its apps. It starts with AI, Blind tools, Games and Productivity.
-- **All apps.** Tap **› All apps**, or type `ls` at the prompt.
+- **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt.
 - **The prompt.** Type part of an app's name, or a folder's name; capitals don't matter. When only one
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
