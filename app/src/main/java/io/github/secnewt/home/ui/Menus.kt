@@ -52,6 +52,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.secnewt.home.apps.AgendaText
+import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.NewtFonts
@@ -384,5 +386,56 @@ private fun MenuOption(title: String, explanation: String, onClick: () -> Unit, 
             color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
         Text(explanation, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Today's events, opened from the date or the line under it. Each event opens in the
+ * calendar app. Past events say "done" in words rather than being dimmed, so they stay
+ * readable.
+ */
+@Composable
+fun AgendaSheet(
+    date: String,
+    events: List<DayEvent>,
+    now: Long,
+    time: (Long) -> String,
+    onOpenEvent: (DayEvent) -> Unit,
+    onOpenCalendar: () -> Unit,
+    onStop: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Today · $date") }) {
+        if (events.isEmpty()) {
+            Text(
+                "No events today.",
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        }
+        events.forEach { event ->
+            val done = !event.allDay && event.end <= now
+            val status = when {
+                done -> " · done"
+                AgendaText.isNow(event, now) -> " · now"
+                else -> ""
+            }
+            val detail = buildString {
+                append(
+                    if (event.allDay) "All day" else "${time(event.begin)} to ${time(event.end)}",
+                )
+                append(status)
+                if (event.location.isNotEmpty()) append(" · ${event.location}")
+            }
+            MenuOption(event.title, detail, onClick = { onOpenEvent(event) })
+        }
+        MenuOption("Open calendar", "Opens your calendar app at today", onClick = onOpenCalendar)
+        MenuOption(
+            "Stop showing events",
+            "Hides them from the home screen. Press and hold the date to bring them back.",
+            onClick = onStop,
+        )
+        SheetButton("Close", onDismiss)
     }
 }

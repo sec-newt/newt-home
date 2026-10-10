@@ -1,6 +1,10 @@
 package io.github.secnewt.home
 
+import android.Manifest
+import android.content.ContentUris
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.content.pm.LauncherApps
 import android.net.Uri
 import android.os.Bundle
@@ -13,16 +17,21 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppRepository
+import io.github.secnewt.home.apps.CalendarRepository
+import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.DeviceWatcher
@@ -54,6 +63,17 @@ class MainActivity : ComponentActivity() {
 
     private var status by mutableStateOf(DeviceStatus())
     private lateinit var watcher: DeviceWatcher
+
+    // Today's events under the date: off until you say yes, then read only from the phone.
+    private var agenda by mutableStateOf<Agenda>(Agenda.Off)
+    private var watchingCalendar = false
+    private val calendarChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) = refreshAgenda()
+    }
+    private val askCalendar = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) say("Calendar access is off. Turn it on under Settings → Apps → Newt Home → Permissions.")
+        refreshAgenda()
+    }
 
     /** Android tells the home app when apps are installed, updated or removed. */
     private val packageChanges = object : LauncherApps.Callback() {
@@ -106,6 +126,16 @@ class MainActivity : ComponentActivity() {
                     onAppInfo = ::showAppInfo,
                     onClock = ::openClock,
                     onDate = ::openCalendar,
+                    agenda = agenda,
+                    onAgendaChoice = ::chooseEvents,
+                    onFixCalendar = ::showOwnSettings,
+                    onDateHold = ::toggleEvents,
+                    onOpenEvent = ::openEvent,
+                    onStopEvents = {
+                        setShowEvents(false)
+                        say("Today's events are hidden. Press and hold the date to bring them back.")
+                    },
+                    onNewDay = ::refreshAgenda,
                 )
             }
         }
@@ -118,6 +148,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         watcher.stop()
+        stopWatchingCalendar()
         super.onStop()
     }
 
@@ -139,6 +170,8 @@ class MainActivity : ComponentActivity() {
         // Android's "Remove animations" sets the animator scale to 0; then nothing types out.
         animateBoot = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
         bootKey++
+        // Calendar access can be turned off in Settings while we're away.
+        refreshAgenda()
     }
 
     override fun onDestroy() {
@@ -150,6 +183,87 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         resetSignal++
+    }
+
+    private fun canReadCalendar(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+    /** Works out what goes under the date, reading today's events if they're turned on. */
+    private fun refreshAgenda() {
+        when (store.showEvents()) {
+            null -> agenda = Agenda.Offer
+            false -> agenda = Agenda.Off
+            true -> if (!canReadCalendar()) {
+                agenda = Agenda.NeedsPermission
+            } else {
+                watchCalendar()
+                lifecycleScope.launch {
+                    val events = withContext(Dispatchers.IO) {
+                        try {
+                            CalendarRepository(this@MainActivity).today()
+                        } catch (e: RuntimeException) {
+                            // Access was taken away mid-read, or no calendar storage on the phone.
+                            emptyList()
+                        }
+                    }
+                    if (store.showEvents() == true) agenda = Agenda.Today(events)
+                }
+            }
+        }
+        if (agenda == Agenda.Off || agenda == Agenda.Offer || agenda == Agenda.NeedsPermission) stopWatchingCalendar()
+    }
+
+    /** Reads again when an event is added, changed or synced, but only while it's shown. */
+    private fun watchCalendar() {
+        if (watchingCalendar) return
+        try {
+            contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, calendarChanges)
+            watchingCalendar = true
+        } catch (e: SecurityException) {
+            watchingCalendar = false
+        }
+    }
+
+    private fun stopWatchingCalendar() {
+        if (!watchingCalendar) return
+        contentResolver.unregisterContentObserver(calendarChanges)
+        watchingCalendar = false
+    }
+
+    private fun setShowEvents(show: Boolean?) {
+        store.setShowEvents(show)
+        refreshAgenda()
+    }
+
+    /** "Yes" or "No thanks" on the offer under the date. Yes asks Android for calendar access. */
+    private fun chooseEvents(yes: Boolean) {
+        setShowEvents(yes)
+        if (yes && !canReadCalendar()) askCalendar.launch(Manifest.permission.READ_CALENDAR)
+    }
+
+    /** Press and hold the date: hides events when they're shown, or offers them again. */
+    private fun toggleEvents() {
+        if (store.showEvents() == true) {
+            setShowEvents(false)
+            say("Today's events are hidden. Press and hold the date to bring them back.")
+        } else {
+            setShowEvents(null)
+        }
+    }
+
+    /** Newt Home's own page in Settings, to turn calendar access back on. */
+    private fun showOwnSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+        if (tryStart(intent)) say("Tap Permissions, then Calendar, then Allow.")
+    }
+
+    /** One event in the calendar app; if no app opens it, the calendar at today. */
+    private fun openEvent(event: DayEvent) {
+        val intent = Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id))
+            .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.begin)
+            .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.end)
+            .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, event.allDay)
+        if (!tryStart(intent)) openCalendar()
     }
 
     private fun reload() {

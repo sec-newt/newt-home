@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- One permission, and no internet access: a launcher gets the list of apps from Android
+    <!-- Two permissions, and no internet access: a launcher gets the list of apps from Android
          itself. config/allowed-permissions.txt keeps it that way. -->
 
     <!-- The status line's [wifi] / [mobile]: whether the phone is on Wi-Fi or mobile data.
          It can't open connections or see what's sent; the app still has no internet. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Today's events under the date. Only asked for after you tap "Yes" on the offer, and
+         only read on the phone: with no internet permission, events can't be sent anywhere.
+         Read only; the launcher can't add, change or delete events. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
 
     <!-- Lets the app see apps that can be opened from a home screen, and nothing else
          (instead of the much broader "see every installed app" permission). -->

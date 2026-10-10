@@ -87,6 +87,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.secnewt.home.apps.Agenda
+import io.github.secnewt.home.apps.AgendaText
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
@@ -178,6 +180,12 @@ fun HomeScreen(
     status: DeviceStatus = DeviceStatus(),
     screen: Screen = Screen.HOME,
     onScreen: (Screen) -> Unit = {},
+    agenda: Agenda = Agenda.Off,
+    now: Long = 0L,
+    time: (Long) -> String = { "" },
+    onAgendaChoice: (Boolean) -> Unit = {},
+    onFixCalendar: () -> Unit = {},
+    onDateHold: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -212,6 +220,7 @@ fun HomeScreen(
                         HomePage(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
+                            agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold,
                         )
                     }
                 }
@@ -246,6 +255,12 @@ private fun HomePage(
     bootKey: Int,
     animateBoot: Boolean,
     onScreen: (Screen) -> Unit,
+    agenda: Agenda,
+    now: Long,
+    time: (Long) -> String,
+    onAgendaChoice: (Boolean) -> Unit,
+    onFixCalendar: () -> Unit,
+    onDateHold: () -> Unit,
 ) {
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
@@ -259,7 +274,17 @@ private fun HomePage(
             item {
                 Column(Modifier.padding(top = 12.dp)) {
                     BootLine("date", bootKey, animateBoot) { alpha ->
-                        ClockAndDate(clock, date, onClock, onDate, Modifier.bootFade(alpha))
+                        Column(Modifier.bootFade(alpha)) {
+                            ClockAndDate(
+                                clock,
+                                date,
+                                onClock,
+                                onDate,
+                                dateLabel = if (agenda is Agenda.Today) "Today's events" else "Open Calendar",
+                                onDateHold = onDateHold,
+                            )
+                            AgendaLine(agenda, now, time, onDate, onAgendaChoice, onFixCalendar)
+                        }
                     }
                 }
             }
@@ -488,8 +513,17 @@ private fun PromptLine(command: String, short: Boolean = false) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDate: () -> Unit, modifier: Modifier = Modifier) {
+private fun ClockAndDate(
+    clock: String,
+    date: String,
+    onClock: () -> Unit,
+    onDate: () -> Unit,
+    modifier: Modifier = Modifier,
+    dateLabel: String = "Open Calendar",
+    onDateHold: () -> Unit = {},
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Box(
             Modifier
@@ -515,7 +549,12 @@ private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDat
                 .heightIn(min = 48.dp)
                 .widthIn(min = 48.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .clickable(onClickLabel = "Open Calendar", onClick = onDate)
+                .combinedClickable(
+                    onClickLabel = dateLabel,
+                    onLongClickLabel = "Show or hide today's events",
+                    onLongClick = onDateHold,
+                    onClick = onDate,
+                )
                 .padding(horizontal = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -533,6 +572,65 @@ private fun Hint(text: String, top: Dp = 12.dp) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = top, start = 4.dp),
     )
+}
+
+/**
+ * The line under the date. Off: nothing. Offer: asks first, since it needs calendar access.
+ * Turned on: "next: 3:00 Dentist · 2 more today", which opens the day's list like the date.
+ */
+@Composable
+private fun AgendaLine(
+    agenda: Agenda,
+    now: Long,
+    time: (Long) -> String,
+    onOpen: () -> Unit,
+    onChoice: (Boolean) -> Unit,
+    onFix: () -> Unit,
+) {
+    when (agenda) {
+        Agenda.Off -> Unit
+        Agenda.Offer -> Column(Modifier.padding(top = 4.dp)) {
+            Text(
+                "show today's events here?",
+                fontFamily = NewtFonts.Mono,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NavButton("Yes", "Yes, show today's events", Modifier.weight(1f)) { onChoice(true) }
+                NavButton("No thanks", "No thanks", Modifier.weight(1f)) { onChoice(false) }
+            }
+        }
+        Agenda.NeedsPermission -> AgendaRow(
+            "calendar access is off · tap to fix",
+            MaterialTheme.colorScheme.error,
+            "Calendar access is off. Opens Newt Home's settings to turn it on.",
+            onFix,
+        )
+        is Agenda.Today -> AgendaRow(
+            AgendaText.line(agenda.events, now, time),
+            LocalTerminalColors.current.prompt,
+            null,
+            onOpen,
+        )
+    }
+}
+
+@Composable
+private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = if (spoken == null) "Today's events" else null, onClick = onClick)
+            .padding(horizontal = 4.dp)
+            .then(if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(text, fontFamily = NewtFonts.Mono, fontSize = 16.sp, color = color)
+    }
 }
 
 /** The blue-to-purple outline used across Newt apps. */

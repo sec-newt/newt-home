@@ -19,7 +19,9 @@ import com.github.takahirom.roborazzi.RoborazziATFAccessibilityCheckOptions
 import com.github.takahirom.roborazzi.RoborazziATFAccessibilityChecker
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
+import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
@@ -87,6 +89,8 @@ class HomeScreenTest {
         screen: Screen = Screen.HOME,
         onScreen: (Screen) -> Unit = {},
         onToggleFolder: (String) -> Unit = {},
+        agenda: Agenda = Agenda.Off,
+        onAgendaChoice: (Boolean) -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -110,6 +114,31 @@ class HomeScreenTest {
         onScreen = onScreen,
         folderOf = { a -> folders.firstOrNull { a in it.apps }?.name },
         status = DeviceStatus(battery = 54, connection = Connection.WIFI),
+        agenda = agenda,
+        now = 12 * hour,
+        time = time,
+        onAgendaChoice = onAgendaChoice,
+    )
+
+    private val hour = 60L * 60 * 1000
+    private val time: (Long) -> String = { "${it / hour}:00" }
+    private val events = listOf(
+        DayEvent(1, "Trash day", 0, 24 * hour, allDay = true),
+        DayEvent(2, "Standup", 9 * hour, 10 * hour),
+        DayEvent(3, "Dentist", 15 * hour, 16 * hour, location = "Main St clinic"),
+        DayEvent(4, "Dinner with Sam", 18 * hour, 19 * hour),
+    )
+
+    @Composable
+    private fun DaySheet() = AgendaSheet(
+        date = "Fri, Oct 9",
+        events = events,
+        now = 12 * hour,
+        time = time,
+        onOpenEvent = {},
+        onOpenCalendar = {},
+        onStop = {},
+        onDismiss = {},
     )
 
     private fun results(query: String) = HomeView.Results(
@@ -245,6 +274,51 @@ class HomeScreenTest {
             menuOpen = true,
             menu = { NewFolderSheet(existingNames = folders.map { it.name }, onCreate = {}, onDismiss = {}) },
         ) { Home() }
+    }
+
+    @Test
+    fun eventsNextLine() = render("events_next_dark", dark = true) { Home(agenda = Agenda.Today(events)) }
+
+    @Test
+    fun eventsNextLineLargeText() = render("events_next_200_percent", dark = false, fontScale = 2f) {
+        Home(agenda = Agenda.Today(events))
+    }
+
+    @Test
+    fun eventsOffer() = render("events_offer_light", dark = false) { Home(agenda = Agenda.Offer) }
+
+    @Test
+    fun eventsOfferLargeText() = render("events_offer_200_percent", dark = true, fontScale = 2f) { Home(agenda = Agenda.Offer) }
+
+    @Test
+    fun eventsNeedPermission() = render("events_need_permission", dark = true) { Home(agenda = Agenda.NeedsPermission) }
+
+    @Test
+    fun eventsDaySheet() = render("events_day_list_dark", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { DaySheet() }) { Home(agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun eventsDaySheetLargeText() = render("events_day_list_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { DaySheet() }) { Home(agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun eventsOfferAnswers() {
+        var choice: Boolean? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Home(agenda = Agenda.Offer, onAgendaChoice = { choice = it }) }
+        }
+        composeRule.onNodeWithContentDescription("Yes, show today's events").performClick()
+        assertEquals(true, choice)
+        composeRule.onNodeWithContentDescription("No thanks").performClick()
+        assertEquals(false, choice)
+    }
+
+    @Test
+    fun eventsLineShowsTheNextEvent() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
+        composeRule.onNodeWithText("next: 15:00 Dentist · 2 more today").assertIsDisplayed()
     }
 
     @Test

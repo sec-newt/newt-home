@@ -33,6 +33,13 @@ class HomeStore(context: Context) {
         prefs.edit().putString(OPEN_FOLDER, name).apply()
     }
 
+    /** Whether today's events show under the date: true, false, or null if not asked yet. */
+    fun showEvents(): Boolean? = if (prefs.contains(SHOW_EVENTS)) prefs.getBoolean(SHOW_EVENTS, false) else null
+
+    fun setShowEvents(show: Boolean?) {
+        prefs.edit().apply { if (show == null) remove(SHOW_EVENTS) else putBoolean(SHOW_EVENTS, show) }.apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -46,6 +53,7 @@ class HomeStore(context: Context) {
         const val FAVORITES = "favorites"
         const val FOLDERS = "folders"
         const val OPEN_FOLDER = "open_folder"
+        const val SHOW_EVENTS = "show_events"
         const val USES = "uses:"
     }
 }
