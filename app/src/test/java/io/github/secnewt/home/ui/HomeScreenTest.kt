@@ -20,6 +20,8 @@ import com.github.takahirom.roborazzi.RoborazziATFAccessibilityChecker
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.Connection
+import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.NewtTheme
 import org.junit.Assert.assertEquals
@@ -105,6 +107,7 @@ class HomeScreenTest {
         onDate = {},
         onShowAll = onShowAll,
         folderOf = { a -> folders.firstOrNull { a in it.apps }?.name },
+        status = DeviceStatus(battery = 54, connection = Connection.WIFI),
     )
 
     private fun results(query: String) = HomeView.Results(

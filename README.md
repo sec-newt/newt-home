@@ -28,14 +28,21 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
 - **Home and Back** clear the prompt and return to favorites.
+- **The gadget look:** faint scanlines and a dim ASCII newt behind everything, the
+  prompt typing out `date` when you come home (skipped when animations are off),
+  a neon glow on whatever you press, and a color for each folder.
+- **Terminal status line.** `[bat 54%] [wifi ●]` replaces Android's status bar on the
+  home screen. Swipe down from the top edge to bring Android's bar and your
+  notifications back.
 
 Websites as apps and app shortcuts are next (see the plan).
 
 ## Privacy
 
-- **No permissions at all, and no internet access.** The app can't send anything
-  anywhere, and the build fails if any permission is ever added (see
-  `config/allowed-permissions.txt`).
+- **No internet access, and one small permission.** The app can't send anything
+  anywhere. Its only permission, "view network connections", lets the status line
+  show whether you're on Wi-Fi or mobile data. The build fails if any other
+  permission is ever added (see `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
 - Favorites, folders and how often you open each app stay on the phone, in the app's private
   storage, and are excluded from backups.

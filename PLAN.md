@@ -30,6 +30,7 @@ Mock-up of this direction (v2): the same link as above.
 - **Boot type-out.** Coming home, `newt@home:~$ date` types itself out and the clock fades in, in under half a second. Off when Android's animations are off. Favorites never wait for it.
 - **Neon glow** on whatever is pressed, on the prompt while typing, and softly around the clock.
 - **A color for each folder:** AI purple, Blind tools cyan, Games green, Productivity blue.
+- **Terminal status line** `[bat 54%] [wifi ●]` in place of Android's status bar, which is hidden on the home screen only (swipe down from the top edge brings it and notifications back). Battery needs no permission; Wi-Fi or mobile needs "view network connections", which can't open connections.
 - **Tokyo Night stays the default.** Any other theme (amber retro screen is the first candidate) is an optional switch in settings.
 
 - **Terminal session layout.** Lines start with `newt@home:~$`, text is monospace (JetBrains Mono), and the prompt sits at the bottom like a shell.
@@ -135,7 +136,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 ## Privacy
 
-- No internet permission, enforced by the permission allowlist check in CI.
+- No internet permission, enforced by the permission allowlist check in CI. The only permission is "view network connections" for the status line.
 - No `QUERY_ALL_PACKAGES`. The app list comes from `LauncherApps` plus a narrow "launchable apps" query.
 - Usage counts, folders, search words and settings stay in the app's private storage and are excluded from backups.
 - No notification access unless a later feature truly needs it, then off by default and explained.
@@ -171,5 +172,4 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 - **Private Space:** what does GrapheneOS allow a third-party launcher to show? Needs a test on the phone.
 - **Auto-open timing:** is ¾ second right, or should it be faster or slower?
-- **Status line:** a terminal-style `[bat 54%]` line means hiding Android's status bar on the home screen (notification icons come back with a swipe down). Worth it, or keep Android's bar?
 - **Gestures:** does the compass earn a place, or does the prompt cover it?

@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.Folders
@@ -39,6 +40,7 @@ fun HomeRoute(
     resetSignal: Int,
     bootKey: Int,
     animateBoot: Boolean,
+    status: DeviceStatus,
     onOpen: (LauncherApp) -> Unit,
     onFavoritesChange: (List<String>) -> Unit,
     onFoldersChange: (List<Folder>) -> Unit,
@@ -225,6 +227,7 @@ fun HomeRoute(
             folderOf = { Folders.folderOf(folders, it.key) },
             bootKey = bootKey,
             animateBoot = animateBoot,
+            status = status,
             onClock = onClock,
             onDate = onDate,
             onShowAll = { showAll = true },

@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
 import io.github.secnewt.home.ui.theme.NewtFonts
@@ -122,10 +123,12 @@ fun HomeScreen(
     folderOf: (LauncherApp) -> String? = { null },
     bootKey: Int = 0,
     animateBoot: Boolean = false,
+    status: DeviceStatus = DeviceStatus(),
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         GadgetBackground()
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+            StatusLine(status)
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -200,6 +203,41 @@ fun HomeScreen(
             Prompt(query, onQueryChange, onSubmit)
         }
     }
+}
+
+/**
+ * `[bat 54%] [wifi ●]` at the very top, in place of Android's status bar (hidden on the
+ * home screen; swipe down from the top edge to bring it and notifications back).
+ */
+@Composable
+private fun StatusLine(status: DeviceStatus) {
+    val parts = status.parts()
+    if (parts.isEmpty()) return
+    val label = LocalTerminalColors.current.prompt
+    val warn = MaterialTheme.colorScheme.error
+    Text(
+        buildAnnotatedString {
+            parts.forEachIndexed { i, (name, value) ->
+                if (i > 0) append(" ")
+                append("[")
+                withStyle(SpanStyle(color = label, fontWeight = FontWeight.Bold)) { append(name) }
+                append(" ")
+                if (name == "bat" && status.batteryLow) {
+                    withStyle(SpanStyle(color = warn, fontWeight = FontWeight.Bold)) { append(value) }
+                } else {
+                    append(value)
+                }
+                append("]")
+            }
+        },
+        fontFamily = NewtFonts.Mono,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(start = 20.dp, end = 20.dp, top = 10.dp)
+            .clearAndSetSemantics { contentDescription = status.spoken() },
+    )
 }
 
 /** `newt@home:~$ date`: the terminal line above each section, for the look only. */

@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No permissions at all: a launcher gets the list of apps from Android itself, and
-         the app has no internet access. config/allowed-permissions.txt keeps it that way. -->
+    <!-- One permission, and no internet access: a launcher gets the list of apps from Android
+         itself. config/allowed-permissions.txt keeps it that way. -->
+
+    <!-- The status line's [wifi] / [mobile]: whether the phone is on Wi-Fi or mobile data.
+         It can't open connections or see what's sent; the app still has no internet. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Lets the app see apps that can be opened from a home screen, and nothing else
          (instead of the much broader "see every installed app" permission). -->

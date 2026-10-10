@@ -10,8 +10,10 @@ This is a one-person hobby project, so replies may take a few days.
 
 ## How the app protects your data
 
-- **No permissions and no internet access.** A check in every build fails if
-  any permission outside `config/allowed-permissions.txt` is added.
+- **No internet access.** The only permission is "view network connections"
+  (Wi-Fi or mobile data, for the status line), which can't open connections. A
+  check in every build fails if any permission outside
+  `config/allowed-permissions.txt` is added.
 - **It sees only what a home screen needs:** apps that can be opened from a
   launcher, not every installed app.
 - **Data stays private.** Favorites and usage counts live in the app's private

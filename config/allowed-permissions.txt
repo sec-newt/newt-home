@@ -3,8 +3,12 @@
 # permission (for example internet access, or seeing every installed app
 # through QUERY_ALL_PACKAGES) can never sneak in unnoticed.
 #
-# A launcher needs no permissions: Android hands the home app the list of
-# launchable apps on its own.
+# Android hands the home app the list of launchable apps on its own, so the
+# launcher needs almost nothing.
+#
+# The status line's [wifi] / [mobile]: whether the phone is on Wi-Fi or mobile
+# data. It can't open connections; the app still has no internet permission.
+android.permission.ACCESS_NETWORK_STATE
 #
 # Added automatically by AndroidX so the app's own broadcast receivers stay private:
 io.github.secnewt.home.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
