@@ -136,6 +136,9 @@ Every option is a word with one plain line under it saying what it changes. No u
 - [x] Clickable mock-up
 - [x] Project skeleton and APK build on GitHub Actions (copy Newt Phone's setup: CI checks, signed releases, Obtainium)
 - [ ] Phase 1 build
+  - [x] Home screen, favorites, prompt search, opening the only match, All apps
+  - [x] Folders as a tree in a second column, remembered open folder, search by folder name
+  - [ ] Hide apps, search words, letter strip and letter grid in All apps
 
 ## GrapheneOS notes
 

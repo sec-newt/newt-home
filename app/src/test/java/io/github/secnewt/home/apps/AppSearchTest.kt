@@ -51,6 +51,26 @@ class AppSearchTest {
         assertNull("letters scattered through a name are too loose", only("mgnf"))
         assertNull(only("zz"))
     }
+
+    @Test
+    fun `finds apps by the name of their folder`() {
+        val folders = mapOf("Magnifier" to "Blind tools", "Sudoku" to "Games")
+        fun find(q: String) = AppSearch.search(apps, q, name = { it }, folder = { folders[it] })
+        assertEquals(listOf("Magnifier"), find("blind").map { it.item })
+        assertEquals(listOf("Magnifier"), find("TOOLS").map { it.item })
+        assertEquals(Match.IN_FOLDER, find("blind").single().match)
+        // A name match always ranks above a folder match, however often the other app is used.
+        val withGameApp = AppSearch.search(
+            listOf("Sudoku", "Games Hub"),
+            "games",
+            name = { it },
+            uses = { if (it == "Sudoku") 99 else 0 },
+            folder = { folders[it] },
+        )
+        assertEquals(listOf("Games Hub", "Sudoku"), withGameApp.map { it.item })
+        // A folder match alone never opens an app by itself.
+        assertNull(AppSearch.onlyMatch(find("games"), "games"))
+    }
 }
 
 class FavoritesTest {
@@ -69,5 +89,48 @@ class FavoritesTest {
         assertEquals(list, Favorites.move(list, "a", -1))
         assertEquals(list, Favorites.move(list, "c", 1))
         assertEquals(list, Favorites.move(list, "missing", 1))
+    }
+}
+
+class FoldersTest {
+
+    private val start = listOf(Folder("AI"), Folder("Games", listOf("sudoku")))
+
+    @Test
+    fun `names are tidied and must be new`() {
+        assertEquals("Music and podcasts", Folders.cleanName("  Music \t and\npodcasts  "))
+        assertEquals(30, Folders.cleanName("x".repeat(50)).length)
+        assertEquals(start + Folder("Music"), Folders.create(start, " Music "))
+        assertEquals(start, Folders.create(start, "games"))
+        assertEquals(start, Folders.create(start, "   "))
+    }
+
+    @Test
+    fun `rename keeps the apps and refuses a name already used`() {
+        assertEquals(listOf(Folder("AI"), Folder("Fun", listOf("sudoku"))), Folders.rename(start, "Games", "Fun"))
+        assertEquals(start, Folders.rename(start, "Games", "ai"))
+        assertEquals(listOf(Folder("AI"), Folder("GAMES", listOf("sudoku"))), Folders.rename(start, "Games", "GAMES"))
+    }
+
+    @Test
+    fun `an app is in at most one folder`() {
+        val moved = Folders.moveApp(start, "sudoku", "AI")
+        assertEquals(listOf(Folder("AI", listOf("sudoku")), Folder("Games")), moved)
+        assertEquals("AI", Folders.folderOf(moved, "sudoku"))
+        assertEquals(listOf(Folder("AI"), Folder("Games")), Folders.moveApp(start, "sudoku", null))
+    }
+
+    @Test
+    fun `delete and reorder`() {
+        assertEquals(listOf(Folder("AI")), Folders.delete(start, "games"))
+        assertEquals(start.reversed(), Folders.move(start, "Games", -1))
+        assertEquals(start, Folders.move(start, "AI", -1))
+    }
+
+    @Test
+    fun `saving and loading keeps everything`() {
+        val folders = listOf(Folder("Blind tools", listOf("a/b", "c/d")), Folder("Empty"))
+        assertEquals(folders, Folders.decode(Folders.encode(folders)))
+        assertEquals(emptyList<Folder>(), Folders.decode(""))
     }
 }

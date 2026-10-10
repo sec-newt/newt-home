@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,13 +44,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -66,9 +70,13 @@ import io.github.secnewt.home.ui.theme.LocalTerminalColors
 import io.github.secnewt.home.ui.theme.NewtFonts
 import kotlin.math.absoluteValue
 
+/** A folder as the tree shows it: its name and its apps, A–Z. */
+@Immutable
+data class FolderView(val name: String, val apps: List<LauncherApp>)
+
 /** What the output area above the prompt is showing. */
 sealed interface HomeView {
-    /** The resting home screen: favorites. */
+    /** The resting home screen: favorites and the folder tree. */
     data object Favorites : HomeView
 
     /** Every app, A–Z (`ls`). */
@@ -88,6 +96,8 @@ fun HomeScreen(
     date: String,
     view: HomeView,
     favorites: List<LauncherApp>,
+    folders: List<FolderView>,
+    openFolder: String?,
     allApps: List<LauncherApp>,
     query: String,
     opening: LauncherApp?,
@@ -95,9 +105,13 @@ fun HomeScreen(
     onSubmit: () -> Unit,
     onOpen: (LauncherApp) -> Unit,
     onHold: (LauncherApp) -> Unit,
+    onToggleFolder: (String) -> Unit,
+    onHoldFolder: (String) -> Unit,
+    onNewFolder: () -> Unit,
     onClock: () -> Unit,
     onDate: () -> Unit,
     onShowAll: () -> Unit,
+    folderOf: (LauncherApp) -> String? = { null },
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -111,12 +125,33 @@ fun HomeScreen(
                 item { ClockAndDate(clock, date, onClock, onDate) }
                 when (view) {
                     HomeView.Favorites -> {
-                        item { PromptLine("ls favs") }
-                        if (favorites.isEmpty()) {
-                            item { Hint("# no favorites yet. press and hold any app to add it here.") }
+                        item {
+                            HomeColumns(
+                                favorites = {
+                                    PromptLine("ls favs", short = true)
+                                    if (favorites.isEmpty()) Hint("# press and hold any app to add it here")
+                                    for (app in favorites) AppRow(app, onOpen = onOpen, onHold = onHold, compact = true)
+                                    AllAppsRow(onShowAll)
+                                },
+                                tree = {
+                                    PromptLine("tree", short = true)
+                                    for (folder in folders) {
+                                        val open = folder.name == openFolder
+                                        FolderRow(folder, open, onToggleFolder, onHoldFolder)
+                                        if (open) {
+                                            if (folder.apps.isEmpty()) {
+                                                Hint("└ empty. press and hold an app, then Move to folder", top = 0.dp)
+                                            }
+                                            for ((j, app) in folder.apps.withIndex()) {
+                                                val branch = if (j == folder.apps.lastIndex) "└" else "├"
+                                                AppRow(app, onOpen = onOpen, onHold = onHold, compact = true, branch = branch)
+                                            }
+                                        }
+                                    }
+                                    NewFolderRow(onNewFolder)
+                                },
+                            )
                         }
-                        items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
-                        item { AllAppsRow(onShowAll) }
                         item { Hint("# or type a name below") }
                     }
                     HomeView.AllApps -> {
@@ -134,7 +169,14 @@ fun HomeScreen(
                                 r.item == opening -> "only match · opening…"
                                 else -> "Enter opens"
                             }
-                            AppRow(r.item, note = note, highlighted = i == 0, onOpen = onOpen, onHold = onHold)
+                            val why = if (r.match == AppSearch.Match.IN_FOLDER) folderOf(r.item)?.let { "in $it/" } else null
+                            AppRow(
+                                r.item,
+                                note = listOfNotNull(why, note).joinToString(" · ").ifEmpty { null },
+                                highlighted = i == 0,
+                                onOpen = onOpen,
+                                onHold = onHold,
+                            )
                         }
                     }
                 }
@@ -146,11 +188,11 @@ fun HomeScreen(
 
 /** `newt@home:~$ date`: the terminal line above each section, for the look only. */
 @Composable
-private fun PromptLine(command: String) {
+private fun PromptLine(command: String, short: Boolean = false) {
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(color = LocalTerminalColors.current.prompt, fontWeight = FontWeight.Bold)) {
-                append("newt@home:~$ ")
+                append(if (short) "~$ " else "newt@home:~$ ")
             }
             append(command)
         },
@@ -193,19 +235,38 @@ private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDat
 }
 
 @Composable
-private fun Hint(text: String) {
+private fun Hint(text: String, top: Dp = 12.dp) {
     Text(
         text,
         fontFamily = NewtFonts.Mono,
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 12.dp),
+        modifier = Modifier.padding(top = top, start = 4.dp),
     )
+}
+
+/**
+ * Favorites on the left and the folder tree on the right. With large text (150% and up) the
+ * columns would be too narrow to read, so they stack: favorites first, then folders.
+ */
+@Composable
+private fun HomeColumns(favorites: @Composable () -> Unit, tree: @Composable () -> Unit) {
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column {
+            favorites()
+            tree()
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.weight(0.9f)) { favorites() }
+            Column(Modifier.weight(1.1f)) { tree() }
+        }
+    }
 }
 
 /** The blue-to-purple outline used across Newt apps. */
 @Composable
-private fun neonOutline(width: Dp = 1.5.dp) = BorderStroke(
+internal fun neonOutline(width: Dp = 1.5.dp) = BorderStroke(
     width,
     Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)),
 )
@@ -255,6 +316,8 @@ private fun AppRow(
     onHold: (LauncherApp) -> Unit,
     note: String? = null,
     highlighted: Boolean = false,
+    compact: Boolean = false,
+    branch: String? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     val shape = RoundedCornerShape(10.dp)
@@ -273,17 +336,141 @@ private fun AppRow(
                 },
                 onClick = { onOpen(app) },
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIcon(app)
-        Spacer(Modifier.width(12.dp))
+        if (branch != null) Branch(branch)
+        AppIcon(app, size = if (compact) 30.dp else 34.dp)
+        Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
         Column {
-            Text(app.name, fontFamily = NewtFonts.Mono, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                app.name,
+                fontFamily = NewtFonts.Mono,
+                fontSize = if (compact) 17.sp else 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             if (note != null) {
                 Text(note, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+/** The tree's `├`/`└` lines, for the look only. */
+@Composable
+private fun Branch(symbol: String) {
+    Text(
+        symbol,
+        fontFamily = NewtFonts.Mono,
+        fontSize = 17.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(start = 6.dp, end = 4.dp)
+            .clearAndSetSemantics { },
+    )
+}
+
+/** Material's folder shape. */
+private val FolderShape: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Folder",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).addPath(
+        pathData = addPathNodes(
+            "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z",
+        ),
+        fill = SolidColor(Color.Black),
+    ).build()
+}
+
+@Composable
+fun FolderIcon(size: Dp = 30.dp) {
+    val color = MaterialTheme.colorScheme.primary
+    Box(
+        Modifier
+            .size(size)
+            .border(1.5.dp, color, RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(FolderShape, contentDescription = null, tint = color, modifier = Modifier.size(size * 0.6f))
+    }
+}
+
+/** A folder in the tree. Tap to open or close it; press and hold for its menu. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FolderRow(
+    folder: FolderView,
+    open: Boolean,
+    onToggle: (String) -> Unit,
+    onHold: (String) -> Unit,
+) {
+    val haptics = LocalHapticFeedback.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .combinedClickable(
+                onClickLabel = if (open) "Close folder" else "Open folder",
+                onLongClickLabel = "Folder options",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onHold(folder.name)
+                },
+                onClick = { onToggle(folder.name) },
+            )
+            .semantics {
+                stateDescription = if (open) "open, ${folder.apps.size} apps" else "closed, ${folder.apps.size} apps"
+            }
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (open) "▾" else "▸",
+            fontFamily = NewtFonts.Mono,
+            fontSize = 17.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(end = 4.dp)
+                .clearAndSetSemantics { },
+        )
+        FolderIcon()
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${folder.name}/",
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** `+ New folder` at the end of the tree. */
+@Composable
+private fun NewFolderRow(onNewFolder: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onNewFolder)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("+ ") }
+                append("New folder")
+            },
+            fontFamily = NewtFonts.Mono,
+            fontSize = 17.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -375,98 +562,5 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
                 Text("Clear", fontWeight = FontWeight.Bold, fontSize = 17.sp)
             }
         }
-    }
-}
-
-/**
- * The home screen with the press-and-hold [menu] over it while [menuOpen]. While the menu is
- * open, everything behind it is hidden from screen readers, so they can't wander onto apps
- * under the dimmed background.
- */
-@Composable
-fun WithHoldMenu(menuOpen: Boolean, menu: @Composable () -> Unit, content: @Composable () -> Unit) {
-    Box {
-        Box(if (menuOpen) Modifier.clearAndSetSemantics { } else Modifier) { content() }
-        if (menuOpen) menu()
-    }
-}
-
-/**
- * The press-and-hold menu: every choice is a word with one plain line saying what it does.
- * Tapping outside it, Cancel, or Back closes it.
- */
-@Composable
-fun HoldMenu(
-    app: LauncherApp,
-    isFavorite: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    onToggleFavorite: () -> Unit,
-    onMove: (Int) -> Unit,
-    onAppInfo: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                // Taps on the menu itself don't close it.
-                .pointerInput(Unit) { detectTapGestures { } }
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                AppIcon(app, size = 44.dp)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    app.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.semantics { heading() },
-                )
-            }
-            if (isFavorite) {
-                MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite)
-                if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) })
-                if (canMoveDown) MenuOption("Move down", "Lower in your favorites", { onMove(1) })
-            } else {
-                MenuOption("Add to favorites", "Puts it on your home screen", onToggleFavorite)
-            }
-            MenuOption("App info", "Android's page for this app", onAppInfo)
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .padding(top = 4.dp),
-            ) {
-                Text("Cancel", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MenuOption(title: String, explanation: String, onClick: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 60.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = MaterialTheme.colorScheme.onSurface)
-        Text(explanation, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

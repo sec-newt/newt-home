@@ -5,9 +5,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -26,7 +29,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Screenshots (light, dark, 200% text) and accessibility checks for the home screen. */
+/** Screenshots (light, dark, 200% text) and accessibility checks for the home screen and its menus. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
@@ -40,14 +43,29 @@ class HomeScreenTest {
         "Phone", "Messages", "Signal", "Camera", "Vanadium", "Settings", "Sudoku", "Magnifier", "Proton Mail",
     ).map { LauncherApp(key = it, name = it) }
     private val favorites = apps.take(5)
+    private fun app(name: String) = apps.first { it.name == name }
 
-    private fun render(name: String, dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
+    private val folders = listOf(
+        FolderView("AI", emptyList()),
+        FolderView("Blind tools", listOf(app("Magnifier"))),
+        FolderView("Games", listOf(app("Sudoku"))),
+        FolderView("Productivity", listOf(app("Proton Mail"), app("Settings"))),
+    )
+
+    private fun render(
+        name: String,
+        dark: Boolean,
+        fontScale: Float = 1f,
+        before: () -> Unit = {},
+        content: @Composable () -> Unit,
+    ) {
         composeRule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                 NewtTheme(darkTheme = dark) { content() }
             }
         }
+        before()
         composeRule.onRoot().captureRoboImage("build/screenshots/$name.png")
         composeRule.onRoot().checkRoboAccessibility(
             RoborazziATFAccessibilityCheckOptions(
@@ -62,13 +80,17 @@ class HomeScreenTest {
         query: String = "",
         opening: LauncherApp? = null,
         favs: List<LauncherApp> = favorites,
+        openFolder: String? = "Productivity",
         onOpen: (LauncherApp) -> Unit = {},
         onShowAll: () -> Unit = {},
+        onToggleFolder: (String) -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
         view = view,
         favorites = favs,
+        folders = folders,
+        openFolder = openFolder,
         allApps = apps.sortedBy { it.name },
         query = query,
         opening = opening,
@@ -76,12 +98,35 @@ class HomeScreenTest {
         onSubmit = {},
         onOpen = onOpen,
         onHold = {},
+        onToggleFolder = onToggleFolder,
+        onHoldFolder = {},
+        onNewFolder = {},
         onClock = {},
         onDate = {},
         onShowAll = onShowAll,
+        folderOf = { a -> folders.firstOrNull { a in it.apps }?.name },
     )
 
-    private fun results(query: String) = HomeView.Results(query, AppSearch.search(apps, query, name = { it.name }))
+    private fun results(query: String) = HomeView.Results(
+        query,
+        AppSearch.search(apps, query, name = { it.name }, folder = { a -> folders.firstOrNull { a in it.apps }?.name }),
+    )
+
+    @Composable
+    private fun AppMenu(app: LauncherApp, isFavorite: Boolean, folder: String?) = HoldMenu(
+        app = app,
+        isFavorite = isFavorite,
+        canMoveUp = isFavorite,
+        canMoveDown = isFavorite,
+        folderNames = folders.map { it.name },
+        currentFolder = folder,
+        onToggleFavorite = {},
+        onMove = {},
+        onMoveToFolder = {},
+        onMoveToNewFolder = {},
+        onAppInfo = {},
+        onDismiss = {},
+    )
 
     @Test
     fun homeDark() = render("home_dark", dark = true) { Home() }
@@ -93,16 +138,21 @@ class HomeScreenTest {
     fun homeLargeText() = render("home_200_percent", dark = true, fontScale = 2f) { Home() }
 
     @Test
-    fun homeNoFavoritesYet() = render("home_no_favorites", dark = true) { Home(favs = emptyList()) }
+    fun homeEmptyFolderOpen() = render("home_empty_folder_open", dark = false) { Home(openFolder = "AI") }
+
+    @Test
+    fun homeNoFavoritesYet() = render("home_no_favorites", dark = true) { Home(favs = emptyList(), openFolder = null) }
 
     @Test
     fun searchOpeningTheOnlyMatch() = render("search_only_match", dark = true) {
-        val signal = apps.first { it.name == "Signal" }
-        Home(view = results("sign"), query = "sign", opening = signal)
+        Home(view = results("sign"), query = "sign", opening = app("Signal"))
     }
 
     @Test
     fun searchSeveralMatches() = render("search_several", dark = false) { Home(view = results("s"), query = "s") }
+
+    @Test
+    fun searchByFolderName() = render("search_by_folder", dark = true) { Home(view = results("blind"), query = "blind") }
 
     @Test
     fun searchNoMatch() = render("search_no_match", dark = true) { Home(view = results("zz"), query = "zz") }
@@ -112,17 +162,37 @@ class HomeScreenTest {
 
     @Test
     fun holdMenuOnAFavorite() = render("hold_menu_favorite", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Signal"), isFavorite = true, folder = null) }) { Home() }
+    }
+
+    @Test
+    fun holdMenuLargeText() = render("hold_menu_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Proton Mail"), isFavorite = false, folder = "Productivity") }) { Home() }
+    }
+
+    @Test
+    fun holdMenuPickingAFolder() = render(
+        "hold_menu_move_to_folder",
+        dark = true,
+        before = { composeRule.onNodeWithText("Move to folder").performClick() },
+    ) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Magnifier"), isFavorite = false, folder = "Blind tools") }) { Home() }
+    }
+
+    @Test
+    fun folderMenu() = render("folder_menu", dark = true) {
         WithHoldMenu(
             menuOpen = true,
             menu = {
-                HoldMenu(
-                    app = favorites[2],
-                    isFavorite = true,
+                FolderMenu(
+                    name = "Games",
+                    appCount = 1,
+                    otherNames = listOf("AI", "Blind tools", "Productivity"),
                     canMoveUp = true,
                     canMoveDown = true,
-                    onToggleFavorite = {},
+                    onRename = {},
                     onMove = {},
-                    onAppInfo = {},
+                    onDelete = {},
                     onDismiss = {},
                 )
             },
@@ -130,21 +200,34 @@ class HomeScreenTest {
     }
 
     @Test
-    fun holdMenuLargeText() = render("hold_menu_200_percent", dark = false, fontScale = 2f) {
+    fun folderMenuDeleting() = render(
+        "folder_menu_delete",
+        dark = false,
+        before = { composeRule.onNodeWithText("Delete folder").performClick() },
+    ) {
         WithHoldMenu(
             menuOpen = true,
             menu = {
-                HoldMenu(
-                    app = apps.last(),
-                    isFavorite = false,
-                    canMoveUp = false,
+                FolderMenu(
+                    name = "Productivity",
+                    appCount = 2,
+                    otherNames = listOf("AI", "Blind tools", "Games"),
+                    canMoveUp = true,
                     canMoveDown = false,
-                    onToggleFavorite = {},
+                    onRename = {},
                     onMove = {},
-                    onAppInfo = {},
+                    onDelete = {},
                     onDismiss = {},
                 )
             },
+        ) { Home() }
+    }
+
+    @Test
+    fun newFolderSheet() = render("new_folder", dark = true) {
+        WithHoldMenu(
+            menuOpen = true,
+            menu = { NewFolderSheet(existingNames = folders.map { it.name }, onCreate = {}, onDismiss = {}) },
         ) { Home() }
     }
 
@@ -152,12 +235,38 @@ class HomeScreenTest {
     fun tappingAnAppOpensIt() {
         var opened: LauncherApp? = null
         var showedAll = false
+        var toggled: String? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { Home(onOpen = { opened = it }, onShowAll = { showedAll = true }) }
+            NewtTheme(darkTheme = true) {
+                Home(onOpen = { opened = it }, onShowAll = { showedAll = true }, onToggleFolder = { toggled = it })
+            }
         }
         composeRule.onNodeWithText("Signal").assertIsDisplayed().performClick()
         assertEquals("Signal", opened?.name)
+        composeRule.onNodeWithText("Proton Mail").performClick()
+        assertEquals("Proton Mail", opened?.name)
         composeRule.onNodeWithText("All apps", substring = true).performClick()
         assertEquals(true, showedAll)
+        composeRule.onNodeWithText("Games/").performClick()
+        assertEquals("Games", toggled)
+    }
+
+    @Test
+    fun newFolderNeedsAName() {
+        var made: String? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                NewFolderSheet(existingNames = listOf("Games"), onCreate = { made = it }, onDismiss = {})
+            }
+        }
+        composeRule.onNodeWithText("Make folder").performClick()
+        composeRule.onNodeWithText("Type a name first.").assertIsDisplayed()
+        assertEquals(null, made)
+        composeRule.onNodeWithContentDescription("Folder's name").performTextInput("  games ")
+        composeRule.onNodeWithText("There's already a folder called games.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Folder's name").performTextClearance()
+        composeRule.onNodeWithContentDescription("Folder's name").performTextInput("  Music  and podcasts ")
+        composeRule.onNodeWithText("Make folder").performClick()
+        assertEquals("Music and podcasts", made)
     }
 }

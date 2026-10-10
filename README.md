@@ -15,15 +15,21 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 
 - **Time and date at the top.** Tap the time to open the clock app, or the date to
   open the calendar app (GrapheneOS has none built in; Etar on F-Droid works).
+- **Two columns:** favorites on the left (`~$ ls favs`), folders as a tree on the
+  right (`~$ tree`). With very large text they stack instead.
 - **Favorites.** Press and hold any app and choose **Add to favorites**. In the same
   menu, **Move up** and **Move down** change their order.
+- **Folders.** Tap a folder to open it in place; the one you opened last stays open.
+  Press and hold an app and choose **Move to folder** (or make a new one there).
+  Press and hold a folder to rename, move or delete it; deleting a folder never
+  removes its apps. It starts with AI, Blind tools, Games and Productivity.
 - **All apps.** Tap **› All apps**, or type `ls` at the prompt.
-- **The prompt.** Type part of an app's name; capitals don't matter. When only one
+- **The prompt.** Type part of an app's name, or a folder's name; capitals don't matter. When only one
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
 - **Home and Back** clear the prompt and return to favorites.
 
-Folders, websites as apps and the two-column layout are next (see the plan).
+Websites as apps and app shortcuts are next (see the plan).
 
 ## Privacy
 
@@ -31,7 +37,7 @@ Folders, websites as apps and the two-column layout are next (see the plan).
   anywhere, and the build fails if any permission is ever added (see
   `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
-- Favorites and how often you open each app stay on the phone, in the app's private
+- Favorites, folders and how often you open each app stay on the phone, in the app's private
   storage, and are excluded from backups.
 - No Google Play Services, Firebase, analytics or ads.
 
