@@ -20,9 +20,18 @@ What I liked in other launchers, and what to avoid:
 | Niagara | Category folders (AI, Blind tools, Games, Productivity) | Not open source |
 | Terminal launchers (T-UI) | The fun of a prompt | Having to type commands for everything |
 
-## Look: cyberpunk hacker
+## Look: a sci-fi gadget you can actually use
 
-The feel is a hacker's terminal in a cyberpunk city: neon on true black. That's why the Newt colors are Tokyo Night. It's a terminal color scheme with neon blue, purple and cyan, so the launcher can lean into it fully.
+The feel is a retro-futuristic terminal, like a device from a sci-fi movie: neon on true black. That's why the Newt colors are Tokyo Night. It's a terminal color scheme with neon blue, purple and cyan, so the launcher can lean into it fully. Every feature is checked against one test: does it feel like that gadget, and does it make getting to things faster? If not, it stays out.
+
+Mock-up of this direction (v2): the same link as above.
+
+- **Scanlines and a dim ASCII newt** behind everything. Both are still, never animated, and sit far behind the text, so contrast stays at 7:1.
+- **Boot type-out.** Coming home, `newt@home:~$ date` types itself out and the clock fades in, in under half a second. Off when Android's animations are off. Favorites never wait for it.
+- **Neon glow** on whatever is pressed, on the prompt while typing, and softly around the clock.
+- **A color for each folder:** AI purple, Blind tools cyan, Games green, Productivity blue.
+- **Terminal status line** `[bat 54%] [wifi ●]` in place of Android's status bar, which is hidden on the home screen only (swipe down from the top edge brings it and notifications back). Battery needs no permission; Wi-Fi or mobile needs "view network connections", which can't open connections.
+- **Tokyo Night stays the default.** Any other theme (amber retro screen is the first candidate) is an optional switch in settings.
 
 - **Terminal session layout.** Lines start with `newt@home:~$`, text is monospace (JetBrains Mono), and the prompt sits at the bottom like a shell.
 - **Newt colors and contrast rules** from the house style: Tokyo Night on `#050608`, every text color at least 7:1, accents blue `#85ABF8`, purple `#BB9AF7`, cyan `#7DCFFF`, green `#9ECE6A`, red `#FF7A93`. Tokyo Night Day in light mode.
@@ -32,7 +41,11 @@ The feel is a hacker's terminal in a cyberpunk city: neon on true black. That's 
 
 ## Home screen
 
-Everything fits one screen. Nothing on it needs the keyboard.
+Nothing on it needs the keyboard. Not everything has to be visible at once, as long as it's quick to reach.
+
+**Three screens (next):** home in the middle (clock, today's next event, favorites, prompt), folders a swipe left, all apps and search a swipe up. Buttons above the prompt do the same, so swiping is never the only way. This replaces the two columns, which are too cramped at large text sizes.
+
+The first version, still in use until the three screens are built:
 
 ```
 (▪ = the app's icon)
@@ -55,10 +68,13 @@ newt@home:~$ date
 - **Clock and date at the top.** Tapping the time opens the clock app; tapping the date opens the calendar app. Calendar events can come later.
 - **Two columns:** favorites on the left (`ls favs`), folders as a tree on the right (`tree`).
 - **Folders open in place**, one at a time, so the screen never scrolls. The folder I opened last stays open next time.
+- **Today's events (planned):** a "next: 3:00 Dentist · 2 more today" line under the date; tapping it or the date opens the day's list. Needs calendar permission, off until turned on and explained.
 - **Missed calls** show as "2 missed" in red under Phone, a word and not just a dot (see Newt family, below).
 - **At large text sizes** the two columns stack into one. Every layout is checked at 200% text.
 
 ## The prompt (search)
+
+**Commands (planned), a short list on purpose:** `timer 10`, `alarm 7:30`, `flashlight`, `call mom` (handed to Newt Phone), `wifi`, `bluetooth`, `files` (opens your file manager) and `help`. Plain app names always work. No file management in the launcher: it would need Android's broadest storage permission.
 
 - **Type part of a name** and the columns are replaced by `find …` results, each with its icon. Capitals never matter.
 - **Loose matching:** `mgnf` finds Magnifier. It also matches folder names, my own search words and Android's app type (game, music, maps).
@@ -115,11 +131,12 @@ Every option is a word with one plain line under it saying what it changes. No u
 - **Newt Phone favorites** can appear as shortcuts on Phone's press-and-hold menu.
 - **Missed-call count:** rather than giving the launcher call-log access, Newt Phone could share just the count with other Newt apps signed with the same key. Nothing else could read it.
 - **Shared code:** copy the Newt theme and fonts from Newt Phone for now. Once both apps are stable, move them into a shared Newt library.
-- **Icon:** the same newt with a new badge for the launcher (a prompt `>_`?).
+- **Icon:** the same newt with a cyan `>_` prompt badge.
+- **Weather (a future Newt app):** a small Newt Weather app using NOAA's free forecast service, with its own internet permission, a town typed in once instead of location access, and severe-weather alerts. It would share its latest forecast only with apps signed with the Newt key, so the launcher can show `61° · rain at 4pm` and an hourly strip in its own style while staying offline.
 
 ## Privacy
 
-- No internet permission, enforced by the permission allowlist check in CI.
+- No internet permission, enforced by the permission allowlist check in CI. The only permission is "view network connections" for the status line.
 - No `QUERY_ALL_PACKAGES`. The app list comes from `LauncherApps` plus a narrow "launchable apps" query.
 - Usage counts, folders, search words and settings stay in the app's private storage and are excluded from backups.
 - No notification access unless a later feature truly needs it, then off by default and explained.
@@ -138,6 +155,10 @@ Every option is a word with one plain line under it saying what it changes. No u
 - [ ] Phase 1 build
   - [x] Home screen, favorites, prompt search, opening the only match, All apps
   - [x] Folders as a tree in a second column, remembered open folder, search by folder name
+  - [x] The gadget look: scanlines and ASCII newt, boot type-out, glow, folder colors
+  - [ ] Three screens: home, folders (swipe left), all apps (swipe up)
+  - [ ] Today's events under the date, and the day's list
+  - [ ] Commands at the prompt
   - [ ] Hide apps, search words, letter strip and letter grid in All apps
 
 ## GrapheneOS notes
@@ -151,5 +172,4 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 - **Private Space:** what does GrapheneOS allow a third-party launcher to show? Needs a test on the phone.
 - **Auto-open timing:** is ¾ second right, or should it be faster or slower?
-- **Right column:** folders only, or also a short "recent" list?
 - **Gestures:** does the compass earn a place, or does the prompt cover it?

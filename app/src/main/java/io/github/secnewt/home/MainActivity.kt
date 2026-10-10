@@ -9,6 +9,7 @@ import android.os.Looper
 import android.os.UserHandle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,9 +18,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.secnewt.home.apps.AppRepository
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.DeviceStatus
+import io.github.secnewt.home.apps.DeviceWatcher
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
@@ -42,6 +48,13 @@ class MainActivity : ComponentActivity() {
     private var uses by mutableStateOf<Map<String, Int>>(emptyMap())
     private var resetSignal by mutableIntStateOf(0)
 
+    // Goes up each time the home screen comes back into view, which replays the boot type-out.
+    private var bootKey by mutableIntStateOf(0)
+    private var animateBoot by mutableStateOf(true)
+
+    private var status by mutableStateOf(DeviceStatus())
+    private lateinit var watcher: DeviceWatcher
+
     /** Android tells the home app when apps are installed, updated or removed. */
     private val packageChanges = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = reload()
@@ -54,7 +67,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        hideStatusBar()
         launcherApps = getSystemService(LauncherApps::class.java)
+        watcher = DeviceWatcher(this) { status = it }
         store = HomeStore(this)
         favoriteKeys = store.favorites()
         folders = store.folders()
@@ -72,6 +87,9 @@ class MainActivity : ComponentActivity() {
                     openFolder = openFolder,
                     uses = uses,
                     resetSignal = resetSignal,
+                    bootKey = bootKey,
+                    animateBoot = animateBoot,
+                    status = status,
                     onOpen = ::open,
                     onFavoritesChange = {
                         favoriteKeys = it
@@ -91,6 +109,36 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        watcher.start()
+    }
+
+    override fun onStop() {
+        watcher.stop()
+        super.onStop()
+    }
+
+    /**
+     * The home screen shows its own terminal status line, so Android's status bar is hidden
+     * here (only here). Swiping down from the top edge brings it back for a moment, and
+     * notifications with it.
+     */
+    private fun hideStatusBar() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideStatusBar()
+        // Android's "Remove animations" sets the animator scale to 0; then nothing types out.
+        animateBoot = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+        bootKey++
     }
 
     override fun onDestroy() {
