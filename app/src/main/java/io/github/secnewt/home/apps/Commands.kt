@@ -1,0 +1,164 @@
+package io.github.secnewt.home.apps
+
+import androidx.compose.runtime.Immutable
+
+/** Something the prompt can do besides opening an app. */
+sealed interface Command {
+    /** A countdown in the clock app. */
+    data class Timer(val seconds: Int) : Command
+
+    /** An alarm in the clock app, in 24-hour time. */
+    data class Alarm(val hour: Int, val minute: Int) : Command
+
+    /** [on] true or false, or null to switch it the other way. */
+    data class Flashlight(val on: Boolean?) : Command
+
+    /** A phone number to dial, or a name for the phone app to look up. */
+    data class Call(val who: String) : Command {
+        val isNumber: Boolean get() = NUMBER.matches(who)
+    }
+
+    data object Wifi : Command
+    data object Bluetooth : Command
+    data object Files : Command
+    data object Help : Command
+}
+
+private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
+
+/** What the prompt makes of what's typed, when it starts with a command word. */
+@Immutable
+sealed interface CommandMatch {
+    /** A complete command: Enter or a tap runs it. Never runs by itself. */
+    data class Ready(val command: Command) : CommandMatch
+
+    /** A command word without what it needs yet, like `timer` with no time. */
+    data class Incomplete(val word: String, val hint: String) : CommandMatch
+}
+
+/** One line of `help`: what to type and what it does. */
+data class CommandHelp(val example: String, val does: String)
+
+/**
+ * The prompt's short list of commands. Capitals and extra spaces never matter, and a
+ * command only runs on Enter or a tap, never while you're still typing.
+ */
+object Commands {
+
+    val HELP = listOf(
+        CommandHelp("timer 10", "A 10 minute timer. Also timer 90s, timer 1h 30m"),
+        CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845"),
+        CommandHelp("flashlight", "Turns the flashlight on or off. Also torch"),
+        CommandHelp("call mom", "Opens the phone app to call. A number dials it"),
+        CommandHelp("wifi", "Wi-Fi on or off and networks"),
+        CommandHelp("bluetooth", "Bluetooth settings"),
+        CommandHelp("files", "Opens your files app"),
+        CommandHelp("ls", "Every app, A to Z"),
+        CommandHelp("help", "This list"),
+    )
+
+    fun parse(typed: String): CommandMatch? {
+        val text = typed.trim().replace(Regex("""\s+"""), " ")
+        val word = text.substringBefore(' ').lowercase()
+        val rest = text.substringAfter(' ', "").trim()
+        val lower = rest.lowercase()
+        return when (word) {
+            "timer" -> if (rest.isEmpty()) {
+                CommandMatch.Incomplete("timer", "how long? like timer 10, timer 90s or timer 1h 30m")
+            } else {
+                duration(lower)?.let { CommandMatch.Ready(Command.Timer(it)) }
+                    ?: CommandMatch.Incomplete("timer", "a number of minutes, like timer 10, or timer 90s")
+            }
+            "alarm" -> if (rest.isEmpty()) {
+                CommandMatch.Incomplete("alarm", "what time? like alarm 7:30 or alarm 6pm")
+            } else {
+                clockTime(lower)?.let { (h, m) -> CommandMatch.Ready(Command.Alarm(h, m)) }
+                    ?: CommandMatch.Incomplete("alarm", "a time, like alarm 7:30 or alarm 6pm")
+            }
+            "flashlight", "torch" -> when (lower) {
+                "" -> CommandMatch.Ready(Command.Flashlight(null))
+                "on" -> CommandMatch.Ready(Command.Flashlight(true))
+                "off" -> CommandMatch.Ready(Command.Flashlight(false))
+                else -> CommandMatch.Incomplete(word, "$word, $word on, or $word off")
+            }
+            "call" -> if (rest.isEmpty()) {
+                CommandMatch.Incomplete("call", "who? like call mom or call 555 0100")
+            } else {
+                CommandMatch.Ready(Command.Call(rest))
+            }
+            "wifi", "wi-fi" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Wifi) else null
+            "bluetooth" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Bluetooth) else null
+            "files" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Files) else null
+            "help", "?" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Help) else null
+            else -> null
+        }
+    }
+
+    /**
+     * "10" (minutes), "90s", "1h 30m", "1h30", "2 hours" → seconds; up to 24 hours.
+     * A bare number after hours means minutes.
+     */
+    fun duration(text: String): Int? {
+        val part = Regex("""(\d+)\s*(hours|hour|hrs|hr|h|minutes|minute|mins|min|m|seconds|second|secs|sec|s)?""")
+        val compact = text.replace(" ", "")
+        var total = 0L
+        var at = 0
+        var any = false
+        while (at < compact.length) {
+            val m = part.matchAt(compact, at) ?: return null
+            val n = m.groupValues[1].toLongOrNull() ?: return null
+            total += n * when (m.groupValues[2].firstOrNull()) {
+                'h' -> 3600
+                's' -> 1
+                else -> 60
+            }
+            at = m.range.last + 1
+            any = true
+        }
+        return if (any && total in 1..24 * 3600L) total.toInt() else null
+    }
+
+    /** "7:30", "7.30", "730", "1845", "7", "6pm", "7:30 am" → hour (0–23) and minute. */
+    fun clockTime(text: String): Pair<Int, Int>? {
+        val m = Regex("""^(\d{1,2})(?:[:.]?(\d{2}))?\s*(am|pm|a|p)?$""").find(text.replace(" ", "")) ?: return null
+        var hour = m.groupValues[1].toInt()
+        val minute = m.groupValues[2].ifEmpty { "0" }.toInt()
+        val half = m.groupValues[3]
+        if (minute > 59) return null
+        if (half.isNotEmpty()) {
+            if (hour !in 1..12) return null
+            hour = hour % 12 + if (half.startsWith("p")) 12 else 0
+        } else if (hour > 23) {
+            return null
+        }
+        return hour to minute
+    }
+
+    /** "10 min", "1 h 30 min", "90 s". */
+    fun durationText(seconds: Int): String {
+        val h = seconds / 3600
+        val m = seconds % 3600 / 60
+        val s = seconds % 60
+        return listOfNotNull(
+            h.takeIf { it > 0 }?.let { "$it h" },
+            m.takeIf { it > 0 }?.let { "$it min" },
+            s.takeIf { it > 0 }?.let { "$it s" },
+        ).joinToString(" ")
+    }
+
+    /** What running it will do, in words. [time] formats an hour and minute the phone's way. */
+    fun describe(command: Command, time: (Int, Int) -> String): String = when (command) {
+        is Command.Timer -> "start a ${durationText(command.seconds)} timer"
+        is Command.Alarm -> "set an alarm for ${time(command.hour, command.minute)}"
+        is Command.Flashlight -> when (command.on) {
+            true -> "turn the flashlight on"
+            false -> "turn the flashlight off"
+            null -> "switch the flashlight on or off"
+        }
+        is Command.Call -> if (command.isNumber) "dial ${command.who}" else "call ${command.who} with your phone app"
+        Command.Wifi -> "open Wi-Fi"
+        Command.Bluetooth -> "open Bluetooth settings"
+        Command.Files -> "open your files app"
+        Command.Help -> "list the commands"
+    }
+}

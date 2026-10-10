@@ -14,6 +14,10 @@ android.permission.ACCESS_NETWORK_STATE
 # to showing them, and with no internet the events can't leave the phone.
 android.permission.READ_CALENDAR
 #
+# The prompt's timer and alarm commands: hands a new timer or alarm to the
+# clock app. It can't read or change the alarms already set.
+com.android.alarm.permission.SET_ALARM
+#
 # Added automatically by AndroidX so the app's own broadcast receivers stay private:
 io.github.secnewt.home.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 io.github.secnewt.home.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

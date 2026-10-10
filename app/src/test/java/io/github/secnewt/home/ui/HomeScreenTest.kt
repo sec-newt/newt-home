@@ -21,6 +21,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
@@ -91,6 +92,7 @@ class HomeScreenTest {
         onToggleFolder: (String) -> Unit = {},
         agenda: Agenda = Agenda.Off,
         onAgendaChoice: (Boolean) -> Unit = {},
+        onSubmit: () -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -102,7 +104,7 @@ class HomeScreenTest {
         query = query,
         opening = opening,
         onQueryChange = {},
-        onSubmit = {},
+        onSubmit = onSubmit,
         onOpen = onOpen,
         onHold = {},
         onToggleFolder = onToggleFolder,
@@ -319,6 +321,50 @@ class HomeScreenTest {
     fun eventsLineShowsTheNextEvent() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
         composeRule.onNodeWithText("next: 15:00 Dentist · 2 more today").assertIsDisplayed()
+    }
+
+    private fun commandResults(query: String, text: String, ready: Boolean) =
+        HomeView.Results(query, results(query).results, CommandView(text, ready))
+
+    @Test
+    fun commandReady() = render("command_ready_dark", dark = true) {
+        Home(view = commandResults("timer 10", "start a 10 min timer", ready = true), query = "timer 10")
+    }
+
+    @Test
+    fun commandReadyLargeText() = render("command_ready_200_percent", dark = false, fontScale = 2f) {
+        Home(view = commandResults("alarm 7:30", "set an alarm for 7:30 AM", ready = true), query = "alarm 7:30")
+    }
+
+    @Test
+    fun commandIncomplete() = render("command_incomplete_light", dark = false) {
+        Home(view = commandResults("timer", "how long? like timer 10, timer 90s or timer 1h 30m", ready = false), query = "timer")
+    }
+
+    @Test
+    fun helpSheet() = render("help_dark", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}) }) { Home() }
+    }
+
+    @Test
+    fun helpSheetLargeText() = render("help_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}) }) { Home() }
+    }
+
+    @Test
+    fun tappingAReadyCommandRunsIt() {
+        var ran = 0
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                Home(
+                    view = commandResults("flashlight", "switch the flashlight on or off", ready = true),
+                    query = "flashlight",
+                    onSubmit = { ran++ },
+                )
+            }
+        }
+        composeRule.onNodeWithText("switch the flashlight on or off · Enter runs it").performClick()
+        assertEquals(1, ran)
     }
 
     @Test
