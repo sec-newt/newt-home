@@ -3,8 +3,9 @@ package io.github.secnewt.home.apps
 import android.content.Context
 
 /**
- * What the home screen remembers: favorites and how often each app is opened (to rank
- * search results). Kept in the app's private storage, which is excluded from backups.
+ * What the home screen remembers: favorites, folders, the folder open last, and how often
+ * each app is opened (to rank search results). Kept in the app's private storage, which is
+ * excluded from backups.
  */
 class HomeStore(context: Context) {
 
@@ -15,6 +16,21 @@ class HomeStore(context: Context) {
 
     fun setFavorites(keys: List<String>) {
         prefs.edit().putString(FAVORITES, keys.joinToString("\n")).apply()
+    }
+
+    /** The folders, or the starter set (AI, Blind tools, Games, Productivity) the first time. */
+    fun folders(): List<Folder> =
+        prefs.getString(FOLDERS, null)?.let { Folders.decode(it) } ?: Folders.STARTERS
+
+    fun setFolders(folders: List<Folder>) {
+        prefs.edit().putString(FOLDERS, Folders.encode(folders)).apply()
+    }
+
+    /** The folder left open last time, so it's still open next time. */
+    fun openFolder(): String? = prefs.getString(OPEN_FOLDER, null)
+
+    fun setOpenFolder(name: String?) {
+        prefs.edit().putString(OPEN_FOLDER, name).apply()
     }
 
     fun uses(): Map<String, Int> =
@@ -28,6 +44,8 @@ class HomeStore(context: Context) {
 
     private companion object {
         const val FAVORITES = "favorites"
+        const val FOLDERS = "folders"
+        const val OPEN_FOLDER = "open_folder"
         const val USES = "uses:"
     }
 }

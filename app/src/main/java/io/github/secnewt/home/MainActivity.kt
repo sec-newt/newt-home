@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import io.github.secnewt.home.apps.AppRepository
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
@@ -36,6 +37,8 @@ class MainActivity : ComponentActivity() {
 
     private var installed by mutableStateOf<List<InstalledApp>>(emptyList())
     private var favoriteKeys by mutableStateOf<List<String>>(emptyList())
+    private var folders by mutableStateOf<List<Folder>>(emptyList())
+    private var openFolder by mutableStateOf<String?>(null)
     private var uses by mutableStateOf<Map<String, Int>>(emptyMap())
     private var resetSignal by mutableIntStateOf(0)
 
@@ -54,6 +57,8 @@ class MainActivity : ComponentActivity() {
         launcherApps = getSystemService(LauncherApps::class.java)
         store = HomeStore(this)
         favoriteKeys = store.favorites()
+        folders = store.folders()
+        openFolder = store.openFolder()
         uses = store.uses()
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         reload()
@@ -63,12 +68,22 @@ class MainActivity : ComponentActivity() {
                 HomeRoute(
                     apps = installed.map { it.app },
                     favoriteKeys = favoriteKeys,
+                    folders = folders,
+                    openFolder = openFolder,
                     uses = uses,
                     resetSignal = resetSignal,
                     onOpen = ::open,
                     onFavoritesChange = {
                         favoriteKeys = it
                         store.setFavorites(it)
+                    },
+                    onFoldersChange = {
+                        folders = it
+                        store.setFolders(it)
+                    },
+                    onOpenFolderChange = {
+                        openFolder = it
+                        store.setOpenFolder(it)
                     },
                     onAppInfo = ::showAppInfo,
                     onClock = ::openClock,
