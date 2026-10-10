@@ -1,7 +1,6 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -216,7 +215,8 @@ fun HomeScreen(
                         )
                     }
                 }
-                AnimatedVisibility(
+                // The plain version, not the Column one (this sits inside a Box inside a Column).
+                androidx.compose.animation.AnimatedVisibility(
                     visible = appsOpen,
                     enter = slideInVertically { it } + fadeIn(),
                     exit = slideOutVertically { it } + fadeOut(),
