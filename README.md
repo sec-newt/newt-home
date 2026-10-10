@@ -15,6 +15,11 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 
 - **Time and date at the top.** Tap the time to open the clock app, or the date to
   open the calendar app (GrapheneOS has none built in; Etar on F-Droid works).
+- **Today's events (optional).** The first time, a line under the date asks whether to
+  show today's events. Say yes and Android asks for calendar access; then a line like
+  `next: 3:00 Dentist · 2 more today` sits under the date. Tap it or the date for the
+  day's list, and tap an event to open it in your calendar app. **Stop showing events**
+  in that list turns it off; press and hold the date to be asked again.
 - **Three screens.** Home has the time, date and favorites (`~$ ls favs`). Swipe right
   for folders (`~$ tree`), or swipe up past the end of the list for all apps (`~$ ls`).
   The **← Folders** and **All apps ↑** buttons above the prompt do the same, so
@@ -41,10 +46,11 @@ Websites as apps and app shortcuts are next (see the plan).
 
 ## Privacy
 
-- **No internet access, and one small permission.** The app can't send anything
-  anywhere. Its only permission, "view network connections", lets the status line
-  show whether you're on Wi-Fi or mobile data. The build fails if any other
-  permission is ever added (see `config/allowed-permissions.txt`).
+- **No internet access, and two small permissions.** The app can't send anything
+  anywhere. "View network connections" lets the status line show whether you're on
+  Wi-Fi or mobile data. "Calendar" (read only) is asked for only if you choose to
+  show today's events, and those events stay on the phone. The build fails if any
+  other permission is ever added (see `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
 - Favorites, folders and how often you open each app stay on the phone, in the app's private
   storage, and are excluded from backups.

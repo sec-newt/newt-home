@@ -68,7 +68,7 @@ newt@home:~$ date
 - **Clock and date at the top.** Tapping the time opens the clock app; tapping the date opens the calendar app. Calendar events can come later.
 - **Two columns:** favorites on the left (`ls favs`), folders as a tree on the right (`tree`).
 - **Folders open in place**, one at a time, so the screen never scrolls. The folder I opened last stays open next time.
-- **Today's events (planned):** a "next: 3:00 Dentist · 2 more today" line under the date; tapping it or the date opens the day's list. Needs calendar permission, off until turned on and explained.
+- **Today's events (done):** a "next: 3:00 Dentist · 2 more today" line under the date; tapping it or the date opens the day's list, and each event opens in the calendar app. Nothing reads the calendar until I say yes to the offer under the date; "Stop showing events" turns it off and pressing and holding the date asks again.
 - **Missed calls** show as "2 missed" in red under Phone, a word and not just a dot (see Newt family, below).
 - **At large text sizes** the two columns stack into one. Every layout is checked at 200% text.
 
@@ -115,6 +115,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 | Feature | What it does | Android piece | Effort |
 | --- | --- | --- | --- |
 | Home screen | Clock, date, favorites, folder tree, prompt | Home app role | Medium |
+| Today's events | The next event under the date, the day's list on tap | `CalendarContract` (read only, opt-in) | Medium |
 | App list | Every launchable app, kept up to date as apps are installed and removed | `LauncherApps` | Low |
 | Prompt search | Loose matching, ranking by use, opening the only match | App database | Medium |
 | Folders | Create, rename, reorder; remember the last one open | App database | Low |
@@ -124,7 +125,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 | App shortcuts | Long-press shortcuts, such as favorite contacts from Newt Phone | `LauncherApps` shortcuts (default launcher only) | Medium |
 | Work profile / Private Space | Show those apps in their own section | `LauncherApps` profiles | Medium |
 
-**Stretch ideas:** today's calendar events under the date; a Dragon-style gesture compass that shows labeled targets while you drag (never the only way to reach an app); more prompt words like `call mom`.
+**Stretch ideas:** a Dragon-style gesture compass that shows labeled targets while you drag (never the only way to reach an app); more prompt words like `call mom`.
 
 ## Newt family
 
@@ -136,7 +137,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 ## Privacy
 
-- No internet permission, enforced by the permission allowlist check in CI. The only permission is "view network connections" for the status line.
+- No internet permission, enforced by the permission allowlist check in CI. The permissions are "view network connections" for the status line and read-only calendar access for today's events (asked for only after saying yes).
 - No `QUERY_ALL_PACKAGES`. The app list comes from `LauncherApps` plus a narrow "launchable apps" query.
 - Usage counts, folders, search words and settings stay in the app's private storage and are excluded from backups.
 - No notification access unless a later feature truly needs it, then off by default and explained.
@@ -147,7 +148,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 1. **Phase 1: A usable home screen.** Clock and date, favorites, folder tree, prompt search with opening the only match, the all-apps list, the press-and-hold menu and Arrange home.
    - Done when: a week as my only launcher, with my 5–10 daily apps one tap away and nothing I need hidden more than two taps or one search away.
 2. **Phase 2: Websites and shortcuts.** Accept "Add to home screen", Add a website, app shortcuts, and the Newt Phone missed-call count.
-3. **Phase 3: Extras.** Work profile and Private Space, calendar events under the date, the gesture compass.
+3. **Phase 3: Extras.** Work profile and Private Space, the gesture compass.
 
 - [x] Create the GitHub repo
 - [x] Clickable mock-up
@@ -157,7 +158,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Folders as a tree in a second column, remembered open folder, search by folder name
   - [x] The gadget look: scanlines and ASCII newt, boot type-out, glow, folder colors
   - [x] Three screens: home, folders (swipe right), all apps (swipe up)
-  - [ ] Today's events under the date, and the day's list
+  - [x] Today's events under the date, and the day's list
   - [ ] Commands at the prompt
   - [ ] Hide apps, search words, letter strip and letter grid in All apps
 

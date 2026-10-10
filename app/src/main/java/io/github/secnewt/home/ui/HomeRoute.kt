@@ -12,7 +12,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.Folder
@@ -48,6 +50,13 @@ fun HomeRoute(
     onAppInfo: (LauncherApp) -> Unit,
     onClock: () -> Unit,
     onDate: () -> Unit,
+    agenda: Agenda = Agenda.Off,
+    onAgendaChoice: (Boolean) -> Unit = {},
+    onFixCalendar: () -> Unit = {},
+    onDateHold: () -> Unit = {},
+    onOpenEvent: (DayEvent) -> Unit = {},
+    onStopEvents: () -> Unit = {},
+    onNewDay: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -55,11 +64,13 @@ fun HomeRoute(
     var menuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var folderMenuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var newFolder by rememberSaveable { mutableStateOf(false) }
+    var agendaOpen by rememberSaveable { mutableStateOf(false) }
 
     fun closeSheets() {
         menuFor = null
         folderMenuFor = null
         newFolder = false
+        agendaOpen = false
     }
 
     fun reset() {
@@ -104,7 +115,8 @@ fun HomeRoute(
         }
     }
 
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder
+    val today = agenda as? Agenda.Today
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null)
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -128,6 +140,10 @@ fun HomeRoute(
     val locale = LocalLocale.current.platformLocale
     val clock = SimpleDateFormat(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm", locale).format(Date(now))
     val date = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale).format(Date(now))
+    val timeFormat = SimpleDateFormat(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a", locale)
+    val time: (Long) -> String = { timeFormat.format(Date(it)) }
+    // Reads the day's events again when the date turns over at midnight.
+    LaunchedEffect(date) { onNewDay() }
 
     val view = when {
         query.isNotBlank() && !isList -> HomeView.Results(query, results)
@@ -191,6 +207,26 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (agendaOpen && today != null) {
+            AgendaSheet(
+                date = date,
+                events = today.events,
+                now = now,
+                time = time,
+                onOpenEvent = {
+                    closeSheets()
+                    onOpenEvent(it)
+                },
+                onOpenCalendar = {
+                    closeSheets()
+                    onDate()
+                },
+                onStop = {
+                    closeSheets()
+                    onStopEvents()
+                },
+                onDismiss = ::closeSheets,
+            )
         } else if (newFolder) {
             NewFolderSheet(
                 existingNames = folderNames,
@@ -204,7 +240,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder, menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null), menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -236,9 +272,23 @@ fun HomeRoute(
             animateBoot = animateBoot,
             status = status,
             onClock = onClock,
-            onDate = onDate,
+            // With events on, the date opens the day's list (which has "Open calendar").
+            onDate = {
+                if (today != null) {
+                    closeSheets()
+                    agendaOpen = true
+                } else {
+                    onDate()
+                }
+            },
             screen = screen,
             onScreen = { screen = it },
+            agenda = agenda,
+            now = now,
+            time = time,
+            onAgendaChoice = onAgendaChoice,
+            onFixCalendar = onFixCalendar,
+            onDateHold = onDateHold,
         )
     }
 }

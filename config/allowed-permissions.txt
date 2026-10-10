@@ -10,6 +10,10 @@
 # data. It can't open connections; the app still has no internet permission.
 android.permission.ACCESS_NETWORK_STATE
 #
+# Today's events under the date. Read only, asked for only after you say yes
+# to showing them, and with no internet the events can't leave the phone.
+android.permission.READ_CALENDAR
+#
 # Added automatically by AndroidX so the app's own broadcast receivers stay private:
 io.github.secnewt.home.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 io.github.secnewt.home.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
