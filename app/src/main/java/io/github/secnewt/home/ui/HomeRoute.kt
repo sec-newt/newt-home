@@ -50,7 +50,7 @@ fun HomeRoute(
     onDate: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    var showAll by rememberSaveable { mutableStateOf(false) }
+    var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     // At most one sheet is open: an app's menu, a folder's menu, or New folder.
     var menuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var folderMenuFor by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,7 +64,7 @@ fun HomeRoute(
 
     fun reset() {
         query = ""
-        showAll = false
+        screen = Screen.HOME
         closeSheets()
     }
     LaunchedEffect(resetSignal) { reset() }
@@ -105,7 +105,15 @@ fun HomeRoute(
     }
 
     val sheetOpen = menuFor != null || folderMenuFor != null || newFolder
-    BackHandler(enabled = query.isNotEmpty() || showAll || sheetOpen) {
+    // Typing ls is the command for the all-apps screen.
+    LaunchedEffect(isList) {
+        if (isList) {
+            query = ""
+            screen = Screen.APPS
+        }
+    }
+
+    BackHandler(enabled = query.isNotEmpty() || screen != Screen.HOME || sheetOpen) {
         if (sheetOpen) closeSheets() else reset()
     }
 
@@ -123,7 +131,6 @@ fun HomeRoute(
 
     val view = when {
         query.isNotBlank() && !isList -> HomeView.Results(query, results)
-        showAll || isList -> HomeView.AllApps
         else -> HomeView.Favorites
     }
 
@@ -230,7 +237,8 @@ fun HomeRoute(
             status = status,
             onClock = onClock,
             onDate = onDate,
-            onShowAll = { showAll = true },
+            screen = screen,
+            onScreen = { screen = it },
         )
     }
 }
