@@ -1,0 +1,11 @@
+# Every Android permission the installed app may request, one per line.
+# The build fails if the APK asks for anything not listed here, so a new
+# permission (for example internet access, or seeing every installed app
+# through QUERY_ALL_PACKAGES) can never sneak in unnoticed.
+#
+# A launcher needs no permissions: Android hands the home app the list of
+# launchable apps on its own.
+#
+# Added automatically by AndroidX so the app's own broadcast receivers stay private:
+io.github.secnewt.home.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+io.github.secnewt.home.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

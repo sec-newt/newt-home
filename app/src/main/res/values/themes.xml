@@ -1,0 +1,9 @@
+<resources>
+    <!-- Matches the home screen behind it while it starts, so it never flashes. -->
+    <style name="Theme.NewtHome" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/home_background</item>
+        <item name="android:colorBackground">@color/home_background</item>
+    </style>
+    <!-- Tokyo Night Day background in light mode (true black in values-night). -->
+    <color name="home_background">#FFFFFF</color>
+</resources>
