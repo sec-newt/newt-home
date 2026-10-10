@@ -1,6 +1,14 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -112,8 +120,11 @@ fun HomeScreen(
     onDate: () -> Unit,
     onShowAll: () -> Unit,
     folderOf: (LauncherApp) -> String? = { null },
+    bootKey: Int = 0,
+    animateBoot: Boolean = false,
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+        GadgetBackground()
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
             LazyColumn(
                 modifier = Modifier
@@ -121,8 +132,13 @@ fun HomeScreen(
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                item { PromptLine("date") }
-                item { ClockAndDate(clock, date, onClock, onDate) }
+                item {
+                    Column(Modifier.padding(top = 12.dp)) {
+                        BootLine("date", bootKey, animateBoot) { alpha ->
+                            ClockAndDate(clock, date, onClock, onDate, Modifier.bootFade(alpha))
+                        }
+                    }
+                }
                 when (view) {
                     HomeView.Favorites -> {
                         item {
@@ -135,9 +151,9 @@ fun HomeScreen(
                                 },
                                 tree = {
                                     PromptLine("tree", short = true)
-                                    for (folder in folders) {
+                                    for ((index, folder) in folders.withIndex()) {
                                         val open = folder.name == openFolder
-                                        FolderRow(folder, open, onToggleFolder, onHoldFolder)
+                                        FolderRow(folder, open, folderColor(index), onToggleFolder, onHoldFolder)
                                         if (open) {
                                             if (folder.apps.isEmpty()) {
                                                 Hint("└ empty. press and hold an app, then Move to folder", top = 0.dp)
@@ -206,8 +222,8 @@ private fun PromptLine(command: String, short: Boolean = false) {
 }
 
 @Composable
-private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDate: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDate: () -> Unit, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Box(
             Modifier
                 .heightIn(min = 48.dp)
@@ -217,7 +233,14 @@ private fun ClockAndDate(clock: String, date: String, onClock: () -> Unit, onDat
                 .semantics { heading() },
             contentAlignment = Alignment.Center,
         ) {
-            Text(clock, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 52.sp)
+            Text(
+                clock,
+                fontFamily = NewtFonts.Mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 52.sp,
+                // A soft neon halo, like a lit display.
+                style = TextStyle(shadow = Shadow(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), blurRadius = 36f)),
+            )
         }
         Spacer(Modifier.width(8.dp))
         Box(
@@ -321,13 +344,17 @@ private fun AppRow(
 ) {
     val haptics = LocalHapticFeedback.current
     val shape = RoundedCornerShape(10.dp)
+    val interactions = remember { MutableInteractionSource() }
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
+            .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
             .clip(shape)
             .then(if (highlighted) Modifier.border(neonOutline(), shape) else Modifier)
             .combinedClickable(
+                interactionSource = interactions,
+                indication = LocalIndication.current,
                 onClickLabel = "Open",
                 onLongClickLabel = "More options",
                 onLongClick = {
@@ -387,8 +414,7 @@ private val FolderShape: ImageVector by lazy {
 }
 
 @Composable
-fun FolderIcon(size: Dp = 30.dp) {
-    val color = MaterialTheme.colorScheme.primary
+fun FolderIcon(size: Dp = 30.dp, color: Color = MaterialTheme.colorScheme.primary) {
     Box(
         Modifier
             .size(size)
@@ -405,16 +431,22 @@ fun FolderIcon(size: Dp = 30.dp) {
 private fun FolderRow(
     folder: FolderView,
     open: Boolean,
+    color: Color,
     onToggle: (String) -> Unit,
     onHold: (String) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(10.dp)
+    val interactions = remember { MutableInteractionSource() }
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .glow(pressed(interactions), color, neonOutline(), shape)
+            .clip(shape)
             .combinedClickable(
+                interactionSource = interactions,
+                indication = LocalIndication.current,
                 onClickLabel = if (open) "Close folder" else "Open folder",
                 onLongClickLabel = "Folder options",
                 onLongClick = {
@@ -438,14 +470,14 @@ private fun FolderRow(
                 .padding(end = 4.dp)
                 .clearAndSetSemantics { },
         )
-        FolderIcon()
+        FolderIcon(color = color)
         Spacer(Modifier.width(8.dp))
         Text(
             "${folder.name}/",
             fontFamily = NewtFonts.Mono,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.primary,
+            color = color,
         )
     }
 }
@@ -503,11 +535,13 @@ private fun AllAppsRow(onShowAll: () -> Unit) {
 @Composable
 private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
+    var focused by remember { mutableStateOf(false) }
     Row(
         Modifier
             .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)
             .fillMaxWidth()
             .heightIn(min = 60.dp)
+            .glow(focused, MaterialTheme.colorScheme.primary, neonOutline(), shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .border(neonOutline(), shape)
@@ -544,6 +578,7 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 48.dp)
+                .onFocusChanged { focused = it.isFocused }
                 .semantics { contentDescription = "Type an app name" },
             decorationBox = { field ->
                 Box(contentAlignment = Alignment.CenterStart) {

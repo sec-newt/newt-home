@@ -37,6 +37,8 @@ fun HomeRoute(
     openFolder: String?,
     uses: Map<String, Int>,
     resetSignal: Int,
+    bootKey: Int,
+    animateBoot: Boolean,
     onOpen: (LauncherApp) -> Unit,
     onFavoritesChange: (List<String>) -> Unit,
     onFoldersChange: (List<Folder>) -> Unit,
@@ -221,6 +223,8 @@ fun HomeRoute(
                 newFolder = true
             },
             folderOf = { Folders.folderOf(folders, it.key) },
+            bootKey = bootKey,
+            animateBoot = animateBoot,
             onClock = onClock,
             onDate = onDate,
             onShowAll = { showAll = true },

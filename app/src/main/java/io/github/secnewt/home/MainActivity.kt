@@ -9,6 +9,7 @@ import android.os.Looper
 import android.os.UserHandle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +43,10 @@ class MainActivity : ComponentActivity() {
     private var uses by mutableStateOf<Map<String, Int>>(emptyMap())
     private var resetSignal by mutableIntStateOf(0)
 
+    // Goes up each time the home screen comes back into view, which replays the boot type-out.
+    private var bootKey by mutableIntStateOf(0)
+    private var animateBoot by mutableStateOf(true)
+
     /** Android tells the home app when apps are installed, updated or removed. */
     private val packageChanges = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = reload()
@@ -72,6 +77,8 @@ class MainActivity : ComponentActivity() {
                     openFolder = openFolder,
                     uses = uses,
                     resetSignal = resetSignal,
+                    bootKey = bootKey,
+                    animateBoot = animateBoot,
                     onOpen = ::open,
                     onFavoritesChange = {
                         favoriteKeys = it
@@ -91,6 +98,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Android's "Remove animations" sets the animator scale to 0; then nothing types out.
+        animateBoot = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+        bootKey++
     }
 
     override fun onDestroy() {

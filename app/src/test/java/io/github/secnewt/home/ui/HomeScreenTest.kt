@@ -252,6 +252,40 @@ class HomeScreenTest {
     }
 
     @Test
+    fun bootTypeOutEndsWithTheClockShowing() {
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                HomeScreen(
+                    clock = "13:22",
+                    date = "Fri, Oct 9",
+                    view = HomeView.Favorites,
+                    favorites = favorites,
+                    folders = folders,
+                    openFolder = null,
+                    allApps = apps,
+                    query = "",
+                    opening = null,
+                    onQueryChange = {},
+                    onSubmit = {},
+                    onOpen = {},
+                    onHold = {},
+                    onToggleFolder = {},
+                    onHoldFolder = {},
+                    onNewFolder = {},
+                    onClock = {},
+                    onDate = {},
+                    onShowAll = {},
+                    bootKey = 1,
+                    animateBoot = true,
+                )
+            }
+        }
+        // The test clock runs the type-out to the end before checking.
+        composeRule.onNodeWithText("13:22").assertIsDisplayed()
+        composeRule.onNodeWithText("Signal").assertIsDisplayed()
+    }
+
+    @Test
     fun newFolderNeedsAName() {
         var made: String? = null
         composeRule.setContent {
