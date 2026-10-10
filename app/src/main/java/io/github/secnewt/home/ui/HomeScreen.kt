@@ -108,9 +108,20 @@ sealed interface HomeView {
     /** The resting home screen: favorites. */
     data object Favorites : HomeView
 
-    /** Search results for what's typed at the prompt. */
-    data class Results(val query: String, val results: List<AppSearch.Result<LauncherApp>>) : HomeView
+    /** Search results for what's typed at the prompt, with a command first if it is one. */
+    data class Results(
+        val query: String,
+        val results: List<AppSearch.Result<LauncherApp>>,
+        val command: CommandView? = null,
+    ) : HomeView
 }
+
+/**
+ * A command at the top of the results. [ready] commands run on Enter or a tap; otherwise
+ * [text] says what's still needed.
+ */
+@Immutable
+data class CommandView(val text: String, val ready: Boolean)
 
 /** How far past the end of a list a drag has to go to switch screens. */
 private val EDGE_PULL = 96.dp
@@ -297,13 +308,17 @@ private fun HomePage(
                     items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
                 }
                 is HomeView.Results -> {
+                    val command = view.command
+                    if (command != null) {
+                        item(key = "command") { CommandRow(view.query.trim(), command, onSubmit) }
+                    }
                     item { PromptLine("find ${view.query.trim()}") }
-                    if (view.results.isEmpty()) {
+                    if (view.results.isEmpty() && command == null) {
                         item { Hint("# no app matches “${view.query.trim()}”") }
                     }
                     itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
                         val note = when {
-                            i > 0 -> null
+                            i > 0 || command?.ready == true -> null
                             r.item == opening -> "only match · opening…"
                             else -> "Enter opens"
                         }
@@ -311,7 +326,7 @@ private fun HomePage(
                         AppRow(
                             r.item,
                             note = listOfNotNull(why, note).joinToString(" · ").ifEmpty { null },
-                            highlighted = i == 0,
+                            highlighted = i == 0 && command?.ready != true,
                             onOpen = onOpen,
                             onHold = onHold,
                         )
@@ -729,6 +744,68 @@ private fun AppRow(
     }
 }
 
+/**
+ * `> timer 10` with what it will do, like "start a 10 min timer · Enter runs it". A
+ * command not finished yet says what it needs instead, and does nothing when tapped.
+ */
+@Composable
+private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    val interactions = remember { MutableInteractionSource() }
+    val prompt = LocalTerminalColors.current.prompt
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .heightIn(min = 52.dp)
+            .glow(command.ready && pressed(interactions), prompt, neonOutline(), shape)
+            .clip(shape)
+            .then(if (command.ready) Modifier.border(neonOutline(), shape) else Modifier)
+            .then(
+                if (command.ready) {
+                    Modifier.clickable(
+                        interactionSource = interactions,
+                        indication = LocalIndication.current,
+                        onClickLabel = "Run",
+                        onClick = onRun,
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            ">_",
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = prompt,
+            modifier = Modifier
+                .widthIn(min = 34.dp)
+                .clearAndSetSemantics { },
+        )
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                typed,
+                fontFamily = NewtFonts.Mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                if (command.ready) "${command.text} · Enter runs it" else "# ${command.text}",
+                fontFamily = NewtFonts.Mono,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (command.ready) prompt else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 /** The tree's `├`/`└` lines, for the look only. */
 @Composable
 private fun Branch(symbol: String) {
@@ -905,7 +982,7 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
                         Text(
-                            "type an app…",
+                            "type an app, or help…",
                             style = style.copy(fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant),
                         )
                     }

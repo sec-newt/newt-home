@@ -14,6 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.Command
+import io.github.secnewt.home.apps.CommandMatch
+import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.Favorites
@@ -22,6 +25,7 @@ import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 
 /** How long the only match waits before opening, so you can see it and keep typing to cancel. */
@@ -57,6 +61,7 @@ fun HomeRoute(
     onOpenEvent: (DayEvent) -> Unit = {},
     onStopEvents: () -> Unit = {},
     onNewDay: () -> Unit = {},
+    onCommand: (Command) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -65,12 +70,14 @@ fun HomeRoute(
     var folderMenuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var newFolder by rememberSaveable { mutableStateOf(false) }
     var agendaOpen by rememberSaveable { mutableStateOf(false) }
+    var helpOpen by rememberSaveable { mutableStateOf(false) }
 
     fun closeSheets() {
         menuFor = null
         folderMenuFor = null
         newFolder = false
         agendaOpen = false
+        helpOpen = false
     }
 
     fun reset() {
@@ -105,7 +112,21 @@ fun HomeRoute(
             folder = { Folders.folderOf(folders, it.key) },
         )
     }
-    val opening = if (query.isBlank() || isList) null else AppSearch.onlyMatch(results, query)
+    val command = if (isList) null else Commands.parse(query)
+    // A command word never opens an app by itself (typing "files" shouldn't launch Files
+    // before you can press Enter); commands themselves only run on Enter or a tap.
+    val opening = if (query.isBlank() || isList || command != null) null else AppSearch.onlyMatch(results, query)
+
+    fun runCommand(ready: Command) {
+        reset()
+        if (ready == Command.Help) helpOpen = true else onCommand(ready)
+    }
+
+    // Enter: a finished command runs; otherwise the top app opens, so an app named like a
+    // command (a "Timer" app, say) is still one Enter away.
+    fun submit() {
+        if (command is CommandMatch.Ready) runCommand(command.command) else results.firstOrNull()?.let { open(it.item) }
+    }
 
     // Restarts with every letter typed, so typing more cancels the countdown.
     LaunchedEffect(opening?.key, query) {
@@ -116,7 +137,7 @@ fun HomeRoute(
     }
 
     val today = agenda as? Agenda.Today
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null)
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -142,11 +163,26 @@ fun HomeRoute(
     val date = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale).format(Date(now))
     val timeFormat = SimpleDateFormat(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a", locale)
     val time: (Long) -> String = { timeFormat.format(Date(it)) }
+    val clockTime: (Int, Int) -> String = { hour, minute ->
+        val at = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+        }
+        timeFormat.format(at.time)
+    }
     // Reads the day's events again when the date turns over at midnight.
     LaunchedEffect(date) { onNewDay() }
 
     val view = when {
-        query.isNotBlank() && !isList -> HomeView.Results(query, results)
+        query.isNotBlank() && !isList -> HomeView.Results(
+            query,
+            results,
+            when (command) {
+                is CommandMatch.Ready -> CommandView(Commands.describe(command.command, clockTime), ready = true)
+                is CommandMatch.Incomplete -> CommandView(command.hint, ready = false)
+                null -> null
+            },
+        )
         else -> HomeView.Favorites
     }
 
@@ -227,6 +263,15 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (helpOpen) {
+            HelpSheet(
+                commands = Commands.HELP,
+                onPick = { example ->
+                    closeSheets()
+                    query = example
+                },
+                onDismiss = ::closeSheets,
+            )
         } else if (newFolder) {
             NewFolderSheet(
                 existingNames = folderNames,
@@ -240,7 +285,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null), menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -252,7 +297,7 @@ fun HomeRoute(
             query = query,
             opening = opening,
             onQueryChange = { query = it },
-            onSubmit = { results.firstOrNull()?.let { open(it.item) } },
+            onSubmit = ::submit,
             onOpen = ::open,
             onHold = {
                 closeSheets()

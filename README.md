@@ -34,6 +34,14 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 - **The prompt.** Type part of an app's name, or a folder's name; capitals don't matter. When only one
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
+- **Commands.** Type `help` for the list. Each shows what it will do before you press
+  **Enter** (or tap it), and none runs by itself:
+  - `timer 10` (minutes), `timer 90s`, `timer 1h 30m`: starts a timer in your clock app.
+  - `alarm 7:30`, `alarm 6pm`, `alarm 1845`: sets an alarm in your clock app.
+  - `flashlight` or `torch` (or `flashlight on` / `off`). While it's on, the status line
+    shows `[light on]`.
+  - `call mom` opens your phone app; `call 555 0100` opens it with the number dialed.
+  - `wifi`, `bluetooth` and `files` open those.
 - **Home and Back** clear the prompt and return to favorites.
 - **The gadget look:** faint scanlines and a dim ASCII newt behind everything, the
   prompt typing out `date` when you come home (skipped when animations are off),
@@ -46,10 +54,12 @@ Websites as apps and app shortcuts are next (see the plan).
 
 ## Privacy
 
-- **No internet access, and two small permissions.** The app can't send anything
+- **No internet access, and three small permissions.** The app can't send anything
   anywhere. "View network connections" lets the status line show whether you're on
   Wi-Fi or mobile data. "Calendar" (read only) is asked for only if you choose to
-  show today's events, and those events stay on the phone. The build fails if any
+  show today's events, and those events stay on the phone. "Set an alarm" lets the
+  `timer` and `alarm` commands hand a new one to your clock app; it can't see or
+  change the alarms you have. The flashlight needs no permission. The build fails if any
   other permission is ever added (see `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
 - Favorites, folders and how often you open each app stay on the phone, in the app's private

@@ -12,6 +12,8 @@ data class DeviceStatus(
     val battery: Int? = null,
     val charging: Boolean = false,
     val connection: Connection = Connection.UNKNOWN,
+    /** Shown while the flashlight is on, so it's never left on by accident. */
+    val flashlight: Boolean = false,
 ) {
     val batteryLow: Boolean get() = battery != null && battery <= LOW_BATTERY && !charging
 
@@ -31,6 +33,7 @@ data class DeviceStatus(
             Connection.OFFLINE -> add("net" to "offline")
             Connection.UNKNOWN -> Unit
         }
+        if (flashlight) add("light" to "on")
     }
 
     /** The same, as a screen reader should say it. */
@@ -50,6 +53,7 @@ data class DeviceStatus(
             Connection.OFFLINE -> add("offline")
             Connection.UNKNOWN -> Unit
         }
+        if (flashlight) add("flashlight on")
     }.joinToString(", ")
 
     companion object {

@@ -13,7 +13,9 @@ This is a one-person hobby project, so replies may take a few days.
 - **No internet access.** The permissions are "view network connections"
   (Wi-Fi or mobile data, for the status line), which can't open connections, and
   read-only calendar access, asked for only if you choose to show today's events
-  under the date. With no internet, events can't leave the phone. A
+  under the date. With no internet, events can't leave the phone. "Set an alarm"
+  lets the `timer` and `alarm` commands hand a new timer or alarm to the clock
+  app; it can't read or change existing ones. A
   check in every build fails if any permission outside
   `config/allowed-permissions.txt` is added.
 - **It sees only what a home screen needs:** apps that can be opened from a

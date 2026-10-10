@@ -14,6 +14,7 @@ class DeviceStatusTest {
         assertEquals(listOf("bat" to "80% charging", "mobile" to "●"), DeviceStatus(80, true, Connection.MOBILE).parts())
         assertEquals(listOf("bat" to "12% low", "net" to "offline"), DeviceStatus(12, false, Connection.OFFLINE).parts())
         assertEquals(emptyList<Pair<String, String>>(), DeviceStatus().parts())
+        assertEquals(listOf("light" to "on"), DeviceStatus(flashlight = true).parts())
     }
 
     @Test

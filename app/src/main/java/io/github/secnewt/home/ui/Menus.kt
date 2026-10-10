@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.apps.AgendaText
+import io.github.secnewt.home.apps.CommandHelp
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
@@ -436,6 +437,24 @@ fun AgendaSheet(
             "Hides them from the home screen. Press and hold the date to bring them back.",
             onClick = onStop,
         )
+        SheetButton("Close", onDismiss)
+    }
+}
+
+/**
+ * `help`: every command with an example. Tapping one puts it at the prompt to edit or run,
+ * so nothing runs from this list by itself.
+ */
+@Composable
+fun HelpSheet(commands: List<CommandHelp>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Commands") }) {
+        Text(
+            "Type one at the prompt and press Enter. Capitals don't matter, and app names always work too.",
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+        commands.forEach { MenuOption("~$ ${it.example}", it.does, onClick = { onPick(it.example) }) }
         SheetButton("Close", onDismiss)
     }
 }

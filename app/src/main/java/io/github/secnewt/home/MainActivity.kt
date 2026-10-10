@@ -5,6 +5,9 @@ import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.ContentObserver
+import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.content.pm.LauncherApps
 import android.net.Uri
 import android.os.Bundle
@@ -31,6 +34,8 @@ import androidx.lifecycle.lifecycleScope
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppRepository
 import io.github.secnewt.home.apps.CalendarRepository
+import io.github.secnewt.home.apps.Command
+import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.DeviceStatus
@@ -44,6 +49,9 @@ import io.github.secnewt.home.ui.theme.NewtTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** Extra on a dial intent with a name to look up, for Newt Phone. Other phone apps ignore it. */
+const val EXTRA_CONTACT_QUERY = "io.github.secnewt.extra.CONTACT_QUERY"
 
 class MainActivity : ComponentActivity() {
 
@@ -62,6 +70,20 @@ class MainActivity : ComponentActivity() {
     private var animateBoot by mutableStateOf(true)
 
     private var status by mutableStateOf(DeviceStatus())
+
+    // The flashlight, for the `flashlight` command. Needs no permission (not the camera's).
+    private lateinit var cameras: CameraManager
+    private var torchCamera: String? = null
+    private var torchOn by mutableStateOf(false)
+    private val torchChanges = object : CameraManager.TorchCallback() {
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (cameraId == torchCamera) torchOn = enabled
+        }
+
+        override fun onTorchModeUnavailable(cameraId: String) {
+            if (cameraId == torchCamera) torchOn = false
+        }
+    }
     private lateinit var watcher: DeviceWatcher
 
     // Today's events under the date: off until you say yes, then read only from the phone.
@@ -90,6 +112,9 @@ class MainActivity : ComponentActivity() {
         hideStatusBar()
         launcherApps = getSystemService(LauncherApps::class.java)
         watcher = DeviceWatcher(this) { status = it }
+        cameras = getSystemService(CameraManager::class.java)
+        torchCamera = findTorch()
+        cameras.registerTorchCallback(torchChanges, Handler(Looper.getMainLooper()))
         store = HomeStore(this)
         favoriteKeys = store.favorites()
         folders = store.folders()
@@ -109,7 +134,7 @@ class MainActivity : ComponentActivity() {
                     resetSignal = resetSignal,
                     bootKey = bootKey,
                     animateBoot = animateBoot,
-                    status = status,
+                    status = status.copy(flashlight = torchOn),
                     onOpen = ::open,
                     onFavoritesChange = {
                         favoriteKeys = it
@@ -136,6 +161,7 @@ class MainActivity : ComponentActivity() {
                         say("Today's events are hidden. Press and hold the date to bring them back.")
                     },
                     onNewDay = ::refreshAgenda,
+                    onCommand = ::runCommand,
                 )
             }
         }
@@ -176,6 +202,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         launcherApps.unregisterCallback(packageChanges)
+        cameras.unregisterTorchCallback(torchChanges)
         super.onDestroy()
     }
 
@@ -264,6 +291,77 @@ class MainActivity : ComponentActivity() {
             .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.end)
             .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, event.allDay)
         if (!tryStart(intent)) openCalendar()
+    }
+
+    /** A command from the prompt (`help` and `ls` are handled on the home screen itself). */
+    private fun runCommand(command: Command) {
+        when (command) {
+            is Command.Timer -> {
+                val intent = Intent(AlarmClock.ACTION_SET_TIMER)
+                    .putExtra(AlarmClock.EXTRA_LENGTH, command.seconds)
+                    .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                if (!tryStart(intent)) say("Your clock app can't start timers")
+            }
+            is Command.Alarm -> {
+                val intent = Intent(AlarmClock.ACTION_SET_ALARM)
+                    .putExtra(AlarmClock.EXTRA_HOUR, command.hour)
+                    .putExtra(AlarmClock.EXTRA_MINUTES, command.minute)
+                    .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                if (!tryStart(intent)) say("Your clock app can't set alarms")
+            }
+            is Command.Flashlight -> setTorch(command.on ?: !torchOn)
+            is Command.Call -> call(command)
+            Command.Wifi -> {
+                if (!tryStart(Intent(Settings.Panel.ACTION_WIFI)) && !tryStart(Intent(Settings.ACTION_WIFI_SETTINGS))) {
+                    say("Couldn't open Wi-Fi settings")
+                }
+            }
+            Command.Bluetooth -> if (!tryStart(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))) say("Couldn't open Bluetooth settings")
+            Command.Files -> {
+                val files = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_FILES)
+                if (!tryStart(files) && !openByName("Files")) say("No files app found")
+            }
+            Command.Help -> Unit
+        }
+    }
+
+    /**
+     * A number opens the phone app with it dialed (you still press call). A name opens the
+     * phone app, passing the name along for a phone app that can search with it.
+     */
+    private fun call(command: Command.Call) {
+        val intent = if (command.isNumber) {
+            Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", command.who.filter { it.isDigit() || it in "+*#" }, null))
+        } else {
+            Intent(Intent.ACTION_DIAL).putExtra(EXTRA_CONTACT_QUERY, command.who)
+        }
+        if (!tryStart(intent)) say("No phone app found")
+    }
+
+    /** The back camera's flashlight, or any one there is. */
+    private fun findTorch(): String? = try {
+        val withFlash = cameras.cameraIdList.filter {
+            cameras.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        }
+        withFlash.firstOrNull {
+            cameras.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+        } ?: withFlash.firstOrNull()
+    } catch (e: CameraAccessException) {
+        null
+    }
+
+    private fun setTorch(on: Boolean) {
+        val id = torchCamera ?: return say("This phone has no flashlight")
+        try {
+            cameras.setTorchMode(id, on)
+            torchOn = on
+            say(if (on) "Flashlight on" else "Flashlight off")
+        } catch (e: CameraAccessException) {
+            // Another app is using the camera.
+            say("The flashlight is busy. Close the camera app and try again.")
+        } catch (e: IllegalArgumentException) {
+            say("This phone has no flashlight")
+        }
     }
 
     private fun reload() {

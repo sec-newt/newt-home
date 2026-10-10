@@ -74,7 +74,7 @@ newt@home:~$ date
 
 ## The prompt (search)
 
-**Commands (planned), a short list on purpose:** `timer 10`, `alarm 7:30`, `flashlight`, `call mom` (handed to Newt Phone), `wifi`, `bluetooth`, `files` (opens your file manager) and `help`. Plain app names always work. No file management in the launcher: it would need Android's broadest storage permission.
+**Commands (done), a short list on purpose:** `timer 10`, `alarm 7:30`, `flashlight`, `call mom` (handed to the phone app), `wifi`, `bluetooth`, `files` (opens your file manager) and `help`. Each shows what it will do and runs only on Enter or a tap; a command word never auto-opens an app. `call mom` passes the name to the phone app; Newt Phone still needs a small change to search with it. Plain app names always work. No file management in the launcher: it would need Android's broadest storage permission.
 
 - **Type part of a name** and the columns are replaced by `find …` results, each with its icon. Capitals never matter.
 - **Loose matching:** `mgnf` finds Magnifier. It also matches folder names, my own search words and Android's app type (game, music, maps).
@@ -82,7 +82,7 @@ newt@home:~$ date
 - **Results are ranked by use.** The apps I open most come first.
 - **Opens the only match:** when exactly one app has the typed letters together in its name (`sig` → Signal), it opens by itself after about ¾ second. Typing another letter cancels it. Loose matches (letters scattered through a name), keyword and folder matches never open anything by themselves. This can be switched off.
 - **Enter opens the top result.**
-- **One command:** `ls` lists every app. Plain names always work, so there's nothing to learn.
+- **`ls`** lists every app and **`help`** lists the commands. Plain names always work, so there's nothing to learn.
 
 ## All apps (when I don't remember the name)
 
@@ -137,7 +137,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 ## Privacy
 
-- No internet permission, enforced by the permission allowlist check in CI. The permissions are "view network connections" for the status line and read-only calendar access for today's events (asked for only after saying yes).
+- No internet permission, enforced by the permission allowlist check in CI. The permissions are "view network connections" for the status line and read-only calendar access for today's events (asked for only after saying yes), and "set an alarm" for the timer and alarm commands.
 - No `QUERY_ALL_PACKAGES`. The app list comes from `LauncherApps` plus a narrow "launchable apps" query.
 - Usage counts, folders, search words and settings stay in the app's private storage and are excluded from backups.
 - No notification access unless a later feature truly needs it, then off by default and explained.
@@ -159,7 +159,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] The gadget look: scanlines and ASCII newt, boot type-out, glow, folder colors
   - [x] Three screens: home, folders (swipe right), all apps (swipe up)
   - [x] Today's events under the date, and the day's list
-  - [ ] Commands at the prompt
+  - [x] Commands at the prompt
   - [ ] Hide apps, search words, letter strip and letter grid in All apps
 
 ## GrapheneOS notes
