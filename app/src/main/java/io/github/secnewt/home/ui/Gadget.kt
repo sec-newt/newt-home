@@ -1,5 +1,16 @@
 package io.github.secnewt.home.ui
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.res.ResourcesCompat
+import io.github.secnewt.home.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -28,11 +39,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +77,28 @@ private val ASCII_NEWT = """
 """.trimIndent()
 
 /**
+ * The ASCII newt as a picture rather than text. Android's "High contrast text" setting
+ * redraws all text at full strength with dark boxes behind it, which would make a dim
+ * background newt bright; a picture is left alone. Drawn in white; tinted when shown.
+ */
+private fun renderNewt(context: Context, density: Float): ImageBitmap {
+    val font = ResourcesCompat.getFont(context, R.font.jetbrains_mono)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.create(font, 700, false)
+        textSize = 19f * density
+        color = android.graphics.Color.WHITE
+    }
+    val lines = ASCII_NEWT.lines()
+    val lineHeight = 20f * density
+    val width = lines.maxOf { paint.measureText(it) }.toInt() + 1
+    val height = (lines.size * lineHeight).toInt() + 1
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    lines.forEachIndexed { i, line -> canvas.drawText(line, 0f, (i + 0.8f) * lineHeight, paint) }
+    return bitmap.asImageBitmap()
+}
+
+/**
  * Scanlines across the whole screen, a soft darkening at the edges, and the ASCII newt in
  * the middle. It's drawn, not laid out, so screen readers never see it, and its size stays
  * the same at any text size.
@@ -77,17 +107,10 @@ private val ASCII_NEWT = """
 fun GadgetBackground(modifier: Modifier = Modifier) {
     val dark = MaterialTheme.colorScheme.background.lightness() < 0.5f
     val line = if (dark) Color(0xFFAABEFF).copy(alpha = 0.045f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-    val newt = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.17f else 0.08f)
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    // Fixed size: divide out the phone's font scale so the newt doesn't grow with large text.
-    val newtStyle = TextStyle(
-        fontFamily = NewtFonts.Mono,
-        fontWeight = FontWeight.Bold,
-        fontSize = (19f / density.fontScale).sp,
-        lineHeight = (20f / density.fontScale).sp,
-        color = newt,
-    )
+    val newt = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.13f else 0.07f)
+    val context = LocalContext.current
+    val density = LocalDensity.current.density
+    val picture = remember(density) { renderNewt(context, density) }
     Box(
         modifier
             .fillMaxSize()
@@ -108,13 +131,13 @@ fun GadgetBackground(modifier: Modifier = Modifier) {
                         ),
                     )
                 }
-                val text = measurer.measure(ASCII_NEWT, newtStyle)
-                drawText(
-                    text,
+                drawImage(
+                    picture,
                     topLeft = Offset(
-                        (size.width - text.size.width) / 2,
-                        (size.height - text.size.height) / 2 + 30.dp.toPx(),
+                        (size.width - picture.width) / 2,
+                        (size.height - picture.height) / 2 + 30.dp.toPx(),
                     ),
+                    colorFilter = ColorFilter.tint(newt),
                 )
             },
     )
