@@ -4,6 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
+import com.google.android.apps.common.testing.accessibility.framework.AccessibilityViewCheckResult
+import com.google.android.apps.common.testing.accessibility.framework.checks.TextContrastCheck
+import org.hamcrest.Description
+import org.hamcrest.TypeSafeMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -46,7 +53,8 @@ class HomeScreenTest {
 
     private val apps = listOf(
         "Phone", "Messages", "Signal", "Camera", "Vanadium", "Settings", "Sudoku", "Magnifier", "Proton Mail",
-    ).map { LauncherApp(key = it, name = it) } + LauncherApp(key = "shortcut:vanadium/weather", name = "Weather.gov", from = "Vanadium")
+    ).map { LauncherApp(key = it, name = it) } + LauncherApp(key = "shortcut:vanadium/weather", name = "Weather.gov", from = "Vanadium") +
+        LauncherApp(key = "web:1", name = "Bank", url = "https://www.bank.example/login")
     private val favorites = apps.take(5)
     private fun app(name: String) = apps.first { it.name == name }
 
@@ -74,9 +82,29 @@ class HomeScreenTest {
         composeRule.onRoot().captureRoboImage("build/screenshots/$name.png")
         composeRule.onRoot().checkRoboAccessibility(
             RoborazziATFAccessibilityCheckOptions(
+                checker = RoborazziATFAccessibilityChecker(suppressions = clippedAtScrollEdge),
                 failureLevel = RoborazziATFAccessibilityChecker.CheckLevel.Warning,
             )
         )
+    }
+
+    /**
+     * A row cut off by the bottom of a scrolling list shows only a sliver of its text, and the
+     * contrast check measures that sliver. ATF marks these itself ("may be only partially
+     * visible within a scrollable container"); every fully shown row is still checked.
+     */
+    private val clippedAtScrollEdge = object : TypeSafeMatcher<AccessibilityViewCheckResult>() {
+        override fun matchesSafely(result: AccessibilityViewCheckResult): Boolean =
+            result.sourceCheckClass == TextContrastCheck::class.java &&
+                result.message.toString().contains("partially visible within a scrollable container")
+
+        override fun describeTo(description: Description) {
+            description.appendText("text contrast measured on a row clipped at a scroll edge")
+        }
+    }
+
+    private fun scrollAllAppsTo(text: String) {
+        composeRule.onNodeWithTag(ALL_APPS_LIST).performScrollToNode(hasText(text))
     }
 
     @Composable
@@ -418,7 +446,10 @@ class HomeScreenTest {
     fun allAppsWithHiddenApps() = render(
         "all_apps_hidden_open",
         dark = true,
-        before = { composeRule.onNodeWithText("▸ 2 hidden apps").performClick() },
+        before = {
+            scrollAllAppsTo("▸ 2 hidden apps")
+            composeRule.onNodeWithText("▸ 2 hidden apps").performClick()
+        },
     ) {
         Home(screen = Screen.APPS, hidden = listOf(app("Sudoku"), app("Settings")))
     }
@@ -484,7 +515,46 @@ class HomeScreenTest {
     @Test
     fun shortcutsSayWhereTheyCameFrom() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        scrollAllAppsTo("Vanadium shortcut")
         composeRule.onNodeWithText("Vanadium shortcut").assertIsDisplayed()
+    }
+
+    @Test
+    fun addWebsiteSheet() = render("add_website_dark", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AddWebsiteSheet(onAdd = { _, _ -> }, onDismiss = {}) }) { Home(screen = Screen.APPS) }
+    }
+
+    @Test
+    fun addWebsiteSheetLargeText() = render("add_website_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { AddWebsiteSheet(onAdd = { _, _ -> }, onDismiss = {}) }) { Home(screen = Screen.APPS) }
+    }
+
+    @Test
+    fun holdMenuOnAWebsite() = render("hold_menu_website", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Bank"), isFavorite = false, folder = null) }) { Home() }
+    }
+
+    @Test
+    fun addingAWebsiteChecksTheAddress() {
+        var added: Pair<String, String>? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { AddWebsiteSheet(onAdd = { n, u -> added = n to u }, onDismiss = {}) }
+        }
+        composeRule.onNodeWithText("Add website").performClick()
+        composeRule.onNodeWithText("Type the site's address first.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextInput("not a site")
+        composeRule.onNodeWithText("Add website").performClick()
+        composeRule.onNodeWithText("That doesn't look like a web address.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextClearance()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextInput("www.weather.gov")
+        composeRule.onNodeWithText("Add website").performClick()
+        assertEquals("weather.gov" to "https://www.weather.gov", added)
+    }
+
+    @Test
+    fun websitesShowTheirAddress() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.onNodeWithText("website · bank.example").assertIsDisplayed()
     }
 
     @Test

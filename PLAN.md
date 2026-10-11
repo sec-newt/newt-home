@@ -166,7 +166,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 - [ ] Phase 2
   - [x] Accept "Add to home screen" (websites from the browser), with Remove shortcut
-  - [ ] Add a website by hand
+  - [x] Add a website by hand (opens in the default browser)
   - [ ] App shortcuts on the press-and-hold menu
   - [ ] Newt Phone missed-call count
 

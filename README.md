@@ -67,7 +67,12 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   favorites or a folder, or **Remove shortcut**. This needs Newt Home to be your default
   home app.
 
-App shortcuts and adding a website by hand are next (see the plan).
+- **Add a website by hand.** For sites where the browser's option doesn't work, tap
+  **+ Add a website** at the end of All apps, type its address (like `weather.gov`) and
+  an optional name. It opens in your browser and shows "website · weather.gov" under its
+  name.
+
+App shortcuts are next (see the plan).
 
 ## Privacy
 
