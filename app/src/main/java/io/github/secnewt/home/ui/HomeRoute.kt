@@ -113,9 +113,13 @@ fun HomeRoute(
         )
     }
     val command = if (isList) null else Commands.parse(query)
-    // A command word never opens an app by itself (typing "files" shouldn't launch Files
-    // before you can press Enter); commands themselves only run on Enter or a tap.
-    val opening = if (query.isBlank() || isList || command != null) null else AppSearch.onlyMatch(results, query)
+    // A command word, or the start of one, never opens an app by itself (typing "hel" on the
+    // way to "help" mustn't launch an app named Hello); commands only run on Enter or a tap.
+    val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
+        null
+    } else {
+        AppSearch.onlyMatch(results, query)
+    }
 
     fun runCommand(ready: Command) {
         reset()
