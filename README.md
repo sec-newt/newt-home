@@ -82,7 +82,7 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 
 ## Privacy
 
-- **No internet access, and three small permissions.** The app can't send anything
+- **No internet access, and four small permissions.** The app can't send anything
   anywhere. "View network connections" lets the status line show whether you're on
   Wi-Fi or mobile data. "Calendar" (read only) is asked for only if you choose to
   show today's events, and those events stay on the phone. "Set an alarm" lets the
