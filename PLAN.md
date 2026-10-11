@@ -162,7 +162,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Commands at the prompt
   - [x] Hide apps and search words
   - [x] Letter strip in All apps
-  - [ ] Letter grid in All apps
+  - [x] Letter grid in All apps
 
 ## GrapheneOS notes
 

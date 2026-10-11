@@ -424,6 +424,43 @@ class HomeScreenTest {
     }
 
     @Test
+    fun letterGrid() = render(
+        "letter_grid_dark",
+        dark = true,
+        before = { composeRule.onNodeWithContentDescription("Letter grid").performClick() },
+    ) { Home(screen = Screen.APPS) }
+
+    @Test
+    fun letterGridLargeText() = render(
+        "letter_grid_200_percent",
+        dark = false,
+        fontScale = 2f,
+        before = { composeRule.onNodeWithContentDescription("Letter grid").performClick() },
+    ) { Home(screen = Screen.APPS) }
+
+    @Test
+    fun oneLetterFromTheGrid() = render(
+        "letter_grid_picked_m",
+        dark = true,
+        before = {
+            composeRule.onNodeWithContentDescription("Letter grid").performClick()
+            composeRule.onNodeWithContentDescription("M, 2 apps").performClick()
+        },
+    ) { Home(screen = Screen.APPS) }
+
+    @Test
+    fun pickingALetterListsOnlyItsApps() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.onNodeWithContentDescription("Letter grid").performClick()
+        composeRule.onNodeWithContentDescription("S, 3 apps").performClick()
+        composeRule.onNodeWithText("Signal").assertIsDisplayed()
+        composeRule.onNodeWithText("Sudoku").assertIsDisplayed()
+        composeRule.onNodeWithText("Camera").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Show all apps").performClick()
+        composeRule.onNodeWithText("Camera").assertIsDisplayed()
+    }
+
+    @Test
     fun tappingAnAppOpensIt() {
         var opened: LauncherApp? = null
         var went: Screen? = null
