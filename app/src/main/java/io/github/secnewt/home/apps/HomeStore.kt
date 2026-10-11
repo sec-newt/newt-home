@@ -55,6 +55,13 @@ class HomeStore(context: Context) {
         prefs.edit().putString(SEARCH_WORDS, SearchWords.encode(words)).apply()
     }
 
+    /** Websites added by hand. */
+    fun websites(): List<Website> = Websites.decode(prefs.getString(WEBSITES, "").orEmpty())
+
+    fun setWebsites(sites: List<Website>) {
+        prefs.edit().putString(WEBSITES, Websites.encode(sites)).apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -71,6 +78,7 @@ class HomeStore(context: Context) {
         const val SHOW_EVENTS = "show_events"
         const val HIDDEN = "hidden"
         const val SEARCH_WORDS = "search_words"
+        const val WEBSITES = "websites"
         const val USES = "uses:"
     }
 }

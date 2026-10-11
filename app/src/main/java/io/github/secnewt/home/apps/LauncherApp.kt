@@ -18,8 +18,10 @@ data class LauncherApp(
      * app it came from, such as "Vanadium". Null for ordinary apps.
      */
     val from: String? = null,
+    /** For a website added by hand, its address, opened in the browser. */
+    val url: String? = null,
 ) {
-    val isShortcut: Boolean get() = from != null
+    val isShortcut: Boolean get() = from != null || url != null
 }
 
 /** The home screen's favorites, as an ordered list of app keys. */

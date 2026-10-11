@@ -54,6 +54,7 @@ fun HomeRoute(
     onOpenFolderChange: (String?) -> Unit,
     onAppInfo: (LauncherApp) -> Unit,
     onRemoveShortcut: (LauncherApp) -> Unit = {},
+    onAddWebsite: (name: String, url: String) -> Unit = { _, _ -> },
     onClock: () -> Unit,
     onDate: () -> Unit,
     agenda: Agenda = Agenda.Off,
@@ -77,6 +78,7 @@ fun HomeRoute(
     var newFolder by rememberSaveable { mutableStateOf(false) }
     var agendaOpen by rememberSaveable { mutableStateOf(false) }
     var helpOpen by rememberSaveable { mutableStateOf(false) }
+    var addWebsite by rememberSaveable { mutableStateOf(false) }
 
     fun closeSheets() {
         menuFor = null
@@ -84,6 +86,7 @@ fun HomeRoute(
         newFolder = false
         agendaOpen = false
         helpOpen = false
+        addWebsite = false
     }
 
     fun reset() {
@@ -152,7 +155,7 @@ fun HomeRoute(
     }
 
     val today = agenda as? Agenda.Today
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -292,6 +295,14 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (addWebsite) {
+            AddWebsiteSheet(
+                onAdd = { name, url ->
+                    closeSheets()
+                    onAddWebsite(name, url)
+                },
+                onDismiss = ::closeSheets,
+            )
         } else if (helpOpen) {
             HelpSheet(
                 commands = Commands.HELP,
@@ -314,7 +325,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen, menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -325,6 +336,10 @@ fun HomeRoute(
             allApps = shownApps,
             hiddenApps = hiddenApps,
             isHidden = { it.key in hidden },
+            onAddWebsite = {
+                closeSheets()
+                addWebsite = true
+            },
             query = query,
             opening = opening,
             onQueryChange = { query = it },

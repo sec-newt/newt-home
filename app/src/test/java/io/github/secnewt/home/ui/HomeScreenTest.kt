@@ -46,7 +46,8 @@ class HomeScreenTest {
 
     private val apps = listOf(
         "Phone", "Messages", "Signal", "Camera", "Vanadium", "Settings", "Sudoku", "Magnifier", "Proton Mail",
-    ).map { LauncherApp(key = it, name = it) } + LauncherApp(key = "shortcut:vanadium/weather", name = "Weather.gov", from = "Vanadium")
+    ).map { LauncherApp(key = it, name = it) } + LauncherApp(key = "shortcut:vanadium/weather", name = "Weather.gov", from = "Vanadium") +
+        LauncherApp(key = "web:1", name = "Bank", url = "https://www.bank.example/login")
     private val favorites = apps.take(5)
     private fun app(name: String) = apps.first { it.name == name }
 
@@ -485,6 +486,44 @@ class HomeScreenTest {
     fun shortcutsSayWhereTheyCameFrom() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
         composeRule.onNodeWithText("Vanadium shortcut").assertIsDisplayed()
+    }
+
+    @Test
+    fun addWebsiteSheet() = render("add_website_dark", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AddWebsiteSheet(onAdd = { _, _ -> }, onDismiss = {}) }) { Home(screen = Screen.APPS) }
+    }
+
+    @Test
+    fun addWebsiteSheetLargeText() = render("add_website_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { AddWebsiteSheet(onAdd = { _, _ -> }, onDismiss = {}) }) { Home(screen = Screen.APPS) }
+    }
+
+    @Test
+    fun holdMenuOnAWebsite() = render("hold_menu_website", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Bank"), isFavorite = false, folder = null) }) { Home() }
+    }
+
+    @Test
+    fun addingAWebsiteChecksTheAddress() {
+        var added: Pair<String, String>? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { AddWebsiteSheet(onAdd = { n, u -> added = n to u }, onDismiss = {}) }
+        }
+        composeRule.onNodeWithText("Add website").performClick()
+        composeRule.onNodeWithText("Type the site's address first.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextInput("not a site")
+        composeRule.onNodeWithText("Add website").performClick()
+        composeRule.onNodeWithText("That doesn't look like a web address.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextClearance()
+        composeRule.onNodeWithContentDescription("Address, like weather.gov").performTextInput("www.weather.gov")
+        composeRule.onNodeWithText("Add website").performClick()
+        assertEquals("weather.gov" to "https://www.weather.gov", added)
+    }
+
+    @Test
+    fun websitesShowTheirAddress() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.onNodeWithText("website · bank.example").assertIsDisplayed()
     }
 
     @Test

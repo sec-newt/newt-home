@@ -45,6 +45,8 @@ import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.Website
+import java.util.UUID
 import io.github.secnewt.home.ui.HomeRoute
 import io.github.secnewt.home.ui.theme.NewtTheme
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +68,7 @@ class MainActivity : ComponentActivity() {
     private var uses by mutableStateOf<Map<String, Int>>(emptyMap())
     private var hidden by mutableStateOf<Set<String>>(emptySet())
     private var searchWords by mutableStateOf<Map<String, List<String>>>(emptyMap())
+    private var websites by mutableStateOf<List<Website>>(emptyList())
     private var resetSignal by mutableIntStateOf(0)
 
     // Goes up each time the home screen comes back into view, which replays the boot type-out.
@@ -128,13 +131,14 @@ class MainActivity : ComponentActivity() {
         uses = store.uses()
         hidden = store.hidden()
         searchWords = store.searchWords()
+        websites = store.websites()
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         reload()
 
         setContent {
             NewtTheme {
                 HomeRoute(
-                    apps = installed.map { it.app },
+                    apps = installed.map { it.app } + websites.map { it.toApp() },
                     favoriteKeys = favoriteKeys,
                     folders = folders,
                     openFolder = openFolder,
@@ -158,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onAppInfo = ::showAppInfo,
                     onRemoveShortcut = ::removeShortcut,
+                    onAddWebsite = ::addWebsite,
                     onClock = ::openClock,
                     onDate = ::openCalendar,
                     agenda = agenda,
@@ -394,6 +399,16 @@ class MainActivity : ComponentActivity() {
     private fun find(app: LauncherApp): InstalledApp? = installed.firstOrNull { it.app.key == app.key }
 
     private fun open(app: LauncherApp) {
+        app.url?.let { url ->
+            // A website added by hand: opened like any link, in the default browser.
+            if (tryStart(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE))) {
+                store.recordUse(app.key)
+                uses = store.uses()
+            } else {
+                say("No browser found to open ${app.name}")
+            }
+            return
+        }
         val target = find(app) ?: return
         try {
             val shortcut = target.shortcut
@@ -415,6 +430,12 @@ class MainActivity : ComponentActivity() {
      * app set the whole list of its pins for a package, so the others are kept.
      */
     private fun removeShortcut(app: LauncherApp) {
+        if (app.url != null) {
+            websites = websites.filter { it.key != app.key }
+            store.setWebsites(websites)
+            say("Removed ${app.name}")
+            return
+        }
         val target = find(app)?.shortcut ?: return
         val keep = installed.mapNotNull { it.shortcut }
             .filter { it.`package` == target.`package` && it.id != target.id }
@@ -427,6 +448,12 @@ class MainActivity : ComponentActivity() {
             say("Couldn't remove ${app.name}")
         }
         reload()
+    }
+
+    private fun addWebsite(name: String, url: String) {
+        websites = websites + Website(UUID.randomUUID().toString(), name, url)
+        store.setWebsites(websites)
+        say("Added $name to All apps")
     }
 
     private fun showAppInfo(app: LauncherApp) {

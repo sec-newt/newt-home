@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Popup
 import io.github.secnewt.home.apps.Letters
+import io.github.secnewt.home.apps.Websites
 import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -213,6 +214,7 @@ fun HomeScreen(
     onDateHold: () -> Unit = {},
     hiddenApps: List<LauncherApp> = emptyList(),
     isHidden: (LauncherApp) -> Boolean = { false },
+    onAddWebsite: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -257,7 +259,7 @@ fun HomeScreen(
                     enter = slideInVertically { it } + fadeIn(),
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
-                    AppsPage(allApps, hiddenApps, onOpen, onHold) { onScreen(Screen.HOME) }
+                    AppsPage(allApps, hiddenApps, onOpen, onHold, onAddWebsite) { onScreen(Screen.HOME) }
                 }
             }
         }
@@ -411,6 +413,7 @@ private fun AppsPage(
     hiddenApps: List<LauncherApp>,
     onOpen: (LauncherApp) -> Unit,
     onHold: (LauncherApp) -> Unit,
+    onAddWebsite: () -> Unit,
     onHome: () -> Unit,
 ) {
     val pullDown = rememberEdgePull(up = false, onPull = onHome)
@@ -469,6 +472,7 @@ private fun AppsPage(
                         item(key = "letter:${group.letter}") { LetterHeader(group.letter) { gridOpen = true } }
                         items(group.items, key = { it.key }) { app -> AppRow(app, onOpen = onOpen, onHold = onHold) }
                     }
+                    item(key = "add-website") { AddRow("Add a website", onAddWebsite) }
                     if (hiddenApps.isNotEmpty()) {
                         // Hidden apps stay findable: a word at the end of the list, folded away.
                         item(key = "hidden") {
@@ -988,7 +992,8 @@ private fun AppRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             // A shortcut says where it came from, like "Vanadium shortcut", so it's not mistaken for an app.
-            val line = listOfNotNull(app.from?.let { "$it shortcut" }, note).joinToString(" · ").ifEmpty { null }
+            val source = app.url?.let { "website · " + (Websites.host(it) ?: it) } ?: app.from?.let { "$it shortcut" }
+            val line = listOfNotNull(source, note).joinToString(" · ").ifEmpty { null }
             if (line != null) {
                 Text(line, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -1159,20 +1164,24 @@ private fun FolderRow(
 
 /** `+ New folder` at the end of the tree. */
 @Composable
-private fun NewFolderRow(onNewFolder: () -> Unit) {
+private fun NewFolderRow(onNewFolder: () -> Unit) = AddRow("New folder", onNewFolder)
+
+/** "+ New folder", "+ Add a website": a row that adds something. */
+@Composable
+private fun AddRow(label: String, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onNewFolder)
+            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             buildAnnotatedString {
                 withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("+ ") }
-                append("New folder")
+                append(label)
             },
             fontFamily = NewtFonts.Mono,
             fontSize = 17.sp,

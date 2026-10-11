@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +59,7 @@ import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.apps.SearchWords
+import io.github.secnewt.home.apps.Websites
 import io.github.secnewt.home.ui.theme.NewtFonts
 
 /**
@@ -193,7 +195,10 @@ fun HoldMenu(
                     MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden)
                 }
                 val from = app.from
-                if (from != null) {
+                val url = app.url
+                if (url != null) {
+                    MenuOption("Remove website", "Takes it off Newt Home. Opens $url", onRemoveShortcut, danger = true)
+                } else if (from != null) {
                     MenuOption(
                         "Remove shortcut",
                         "Takes it off Newt Home. You can add it again from $from",
@@ -578,4 +583,117 @@ fun PinShortcutSheet(name: String, from: String, onAdd: () -> Unit, onCancel: ()
         SheetButton("Add", onAdd)
         SheetButton("Cancel", onCancel)
     }
+}
+
+/**
+ * "Add a website": a name and an address, for sites where the browser's "Add to home
+ * screen" doesn't work. It opens in your default browser, like a link.
+ */
+@Composable
+fun AddWebsiteSheet(onAdd: (name: String, url: String) -> Unit, onDismiss: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var address by rememberSaveable { mutableStateOf("") }
+    var tried by rememberSaveable { mutableStateOf(false) }
+    val url = Websites.normalize(address)
+    fun save() {
+        if (url != null) onAdd(Websites.cleanName(name, url), url) else tried = true
+    }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Add a website") }) {
+        NeonField(
+            label = "Address, like weather.gov",
+            value = address,
+            onValueChange = {
+                address = it
+                tried = false
+            },
+            keyboardType = KeyboardType.Uri,
+            imeAction = ImeAction.Next,
+            onAction = {},
+            modifier = Modifier.focusRequester(focus),
+        )
+        if (tried) {
+            Text(
+                if (address.isBlank()) "Type the site's address first." else "That doesn't look like a web address.",
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            )
+        }
+        NeonField(
+            label = "Name (optional)",
+            value = name,
+            onValueChange = { name = it },
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Done,
+            onAction = ::save,
+        )
+        Text(
+            "It opens in your browser and shows in All apps and search.",
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+        )
+        SheetButton("Add website", ::save)
+        SheetButton("Cancel", onDismiss)
+    }
+}
+
+/** A labeled one-line text box with the neon outline. */
+@Composable
+private fun NeonField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    keyboardType: KeyboardType,
+    imeAction: ImeAction,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        label,
+        fontWeight = FontWeight.Bold,
+        fontSize = 17.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .clearAndSetSemantics { },
+    )
+    val shape = RoundedCornerShape(14.dp)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = TextStyle(
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+        keyboardOptions = KeyboardOptions(
+            capitalization = if (keyboardType == KeyboardType.Uri) KeyboardCapitalization.None else KeyboardCapitalization.Sentences,
+            autoCorrectEnabled = keyboardType != KeyboardType.Uri,
+            keyboardType = keyboardType,
+            imeAction = imeAction,
+        ),
+        keyboardActions = KeyboardActions(onDone = { onAction() }),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .semantics { contentDescription = label },
+        decorationBox = { field ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .border(neonOutline(), shape)
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) { field() }
+        },
+    )
 }
