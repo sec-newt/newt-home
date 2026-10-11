@@ -197,6 +197,8 @@ fun HomeScreen(
     onAgendaChoice: (Boolean) -> Unit = {},
     onFixCalendar: () -> Unit = {},
     onDateHold: () -> Unit = {},
+    hiddenApps: List<LauncherApp> = emptyList(),
+    isHidden: (LauncherApp) -> Boolean = { false },
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -231,7 +233,7 @@ fun HomeScreen(
                         HomePage(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
-                            agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold,
+                            agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden,
                         )
                     }
                 }
@@ -241,7 +243,7 @@ fun HomeScreen(
                     enter = slideInVertically { it } + fadeIn(),
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
-                    AppsPage(allApps, onOpen, onHold) { onScreen(Screen.HOME) }
+                    AppsPage(allApps, hiddenApps, onOpen, onHold) { onScreen(Screen.HOME) }
                 }
             }
         }
@@ -272,6 +274,7 @@ private fun HomePage(
     onAgendaChoice: (Boolean) -> Unit,
     onFixCalendar: () -> Unit,
     onDateHold: () -> Unit,
+    isHidden: (LauncherApp) -> Boolean,
 ) {
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
@@ -322,10 +325,15 @@ private fun HomePage(
                             r.item == opening -> "only match · opening…"
                             else -> "Enter opens"
                         }
-                        val why = if (r.match == AppSearch.Match.IN_FOLDER) folderOf(r.item)?.let { "in $it/" } else null
+                        val why = when (r.match) {
+                            AppSearch.Match.IN_FOLDER -> folderOf(r.item)?.let { "in $it/" }
+                            AppSearch.Match.YOUR_WORD -> r.word?.let { "your word: $it" }
+                            else -> null
+                        }
+                        val hidden = if (isHidden(r.item)) "hidden" else null
                         AppRow(
                             r.item,
-                            note = listOfNotNull(why, note).joinToString(" · ").ifEmpty { null },
+                            note = listOfNotNull(why, hidden, note).joinToString(" · ").ifEmpty { null },
                             highlighted = i == 0 && command?.ready != true,
                             onOpen = onOpen,
                             onHold = onHold,
@@ -386,11 +394,13 @@ private fun FoldersPage(
 @Composable
 private fun AppsPage(
     allApps: List<LauncherApp>,
+    hiddenApps: List<LauncherApp>,
     onOpen: (LauncherApp) -> Unit,
     onHold: (LauncherApp) -> Unit,
     onHome: () -> Unit,
 ) {
     val pullDown = rememberEdgePull(up = false, onPull = onHome)
+    var showHidden by remember { mutableStateOf(false) }
     Box(
         Modifier
             .fillMaxSize()
@@ -416,9 +426,45 @@ private fun AppsPage(
                     }
                     item(key = app.key) { AppRow(app, onOpen = onOpen, onHold = onHold) }
                 }
+                if (hiddenApps.isNotEmpty()) {
+                    // Hidden apps stay findable: a word at the end of the list, folded away.
+                    item(key = "hidden") {
+                        HiddenToggle(hiddenApps.size, showHidden) { showHidden = !showHidden }
+                    }
+                    if (showHidden) {
+                        items(hiddenApps, key = { "hidden:" + it.key }) {
+                            AppRow(it, onOpen = onOpen, onHold = onHold, note = "hidden")
+                        }
+                    }
+                }
             }
             NavRow { NavButton("↓ Home", "Home", Modifier.weight(1f), onHome) }
         }
+    }
+}
+
+/** "▸ 3 hidden apps": tap to show or fold them away. */
+@Composable
+private fun HiddenToggle(count: Int, open: Boolean, onToggle: () -> Unit) {
+    val noun = if (count == 1) "1 hidden app" else "$count hidden apps"
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = if (open) "Hide them" else "Show them", onClick = onToggle)
+            .padding(horizontal = 4.dp)
+            .semantics { stateDescription = if (open) "Showing" else "Folded away" },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            (if (open) "▾ " else "▸ ") + noun,
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+            color = MaterialTheme.colorScheme.secondary,
+        )
     }
 }
 

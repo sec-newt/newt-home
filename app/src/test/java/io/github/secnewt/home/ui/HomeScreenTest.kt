@@ -93,6 +93,7 @@ class HomeScreenTest {
         agenda: Agenda = Agenda.Off,
         onAgendaChoice: (Boolean) -> Unit = {},
         onSubmit: () -> Unit = {},
+        hidden: List<LauncherApp> = emptyList(),
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -100,11 +101,13 @@ class HomeScreenTest {
         favorites = favs,
         folders = folders,
         openFolder = openFolder,
-        allApps = apps.sortedBy { it.name },
+        allApps = apps.filter { it !in hidden }.sortedBy { it.name },
         query = query,
         opening = opening,
         onQueryChange = {},
         onSubmit = onSubmit,
+        hiddenApps = hidden,
+        isHidden = { it in hidden },
         onOpen = onOpen,
         onHold = {},
         onToggleFolder = onToggleFolder,
@@ -365,6 +368,59 @@ class HomeScreenTest {
         }
         composeRule.onNodeWithText("switch the flashlight on or off · Enter runs it").performClick()
         assertEquals(1, ran)
+    }
+
+    @Test
+    fun holdMenuWithWordsAndHidden() = render("hold_menu_words_hidden", dark = true) {
+        WithHoldMenu(
+            menuOpen = true,
+            menu = {
+                HoldMenu(
+                    app = app("Proton Mail"),
+                    isFavorite = false,
+                    canMoveUp = false,
+                    canMoveDown = false,
+                    folderNames = folders.map { it.name },
+                    currentFolder = "Productivity",
+                    onToggleFavorite = {},
+                    onMove = {},
+                    onMoveToFolder = {},
+                    onMoveToNewFolder = {},
+                    onAppInfo = {},
+                    onDismiss = {},
+                    isHidden = true,
+                    words = listOf("email", "work"),
+                )
+            },
+        ) { Home() }
+    }
+
+    @Test
+    fun searchWordsPage() = render(
+        "search_words_200_percent",
+        dark = false,
+        fontScale = 2f,
+        before = { composeRule.onNodeWithText("Add search words").performClick() },
+    ) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Signal"), isFavorite = true, folder = null) }) { Home() }
+    }
+
+    @Test
+    fun searchByYourWord() = render("search_your_word", dark = true) {
+        val view = HomeView.Results(
+            "chat",
+            AppSearch.search(apps, "chat", name = { it.name }, words = { if (it.name == "Signal") listOf("chat") else emptyList() }),
+        )
+        Home(view = view, query = "chat")
+    }
+
+    @Test
+    fun allAppsWithHiddenApps() = render(
+        "all_apps_hidden_open",
+        dark = true,
+        before = { composeRule.onNodeWithText("▸ 2 hidden apps").performClick() },
+    ) {
+        Home(screen = Screen.APPS, hidden = listOf(app("Sudoku"), app("Settings")))
     }
 
     @Test

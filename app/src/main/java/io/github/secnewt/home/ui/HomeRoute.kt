@@ -23,6 +23,7 @@ import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.SearchWords
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -62,6 +63,10 @@ fun HomeRoute(
     onStopEvents: () -> Unit = {},
     onNewDay: () -> Unit = {},
     onCommand: (Command) -> Unit = {},
+    hidden: Set<String> = emptySet(),
+    searchWords: Map<String, List<String>> = emptyMap(),
+    onHiddenChange: (Set<String>) -> Unit = {},
+    onSearchWordsChange: (Map<String, List<String>>) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -93,16 +98,20 @@ fun HomeRoute(
     }
 
     val sorted = remember(apps) { apps.sortedBy { AppSearch.normalize(it.name) } }
+    // Hidden apps leave All apps and folders (they fold away at the end of All apps).
+    val (hiddenApps, shownApps) = remember(sorted, hidden) { sorted.partition { it.key in hidden } }
     val favorites = remember(apps, favoriteKeys) {
         val byKey = apps.associateBy { it.key }
         favoriteKeys.mapNotNull { byKey[it] }
     }
-    val folderViews = remember(apps, folders) {
+    val folderViews = remember(apps, folders, hidden) {
         val byKey = apps.associateBy { it.key }
-        folders.map { f -> FolderView(f.name, f.keys.mapNotNull { byKey[it] }.sortedBy { AppSearch.normalize(it.name) }) }
+        folders.map { f ->
+            FolderView(f.name, f.keys.filter { it !in hidden }.mapNotNull { byKey[it] }.sortedBy { AppSearch.normalize(it.name) })
+        }
     }
     val isList = AppSearch.normalize(query) == "ls"
-    val results = remember(query, apps, uses, folders) {
+    val results = remember(query, apps, uses, folders, searchWords) {
         if (query.isBlank() || isList) emptyList<AppSearch.Result<LauncherApp>>()
         else AppSearch.search(
             apps,
@@ -110,6 +119,7 @@ fun HomeRoute(
             name = { it.name },
             uses = { uses[it.key] ?: 0 },
             folder = { Folders.folderOf(folders, it.key) },
+            words = { searchWords[it.key].orEmpty() },
         )
     }
     val command = if (isList) null else Commands.parse(query)
@@ -224,6 +234,16 @@ fun HomeRoute(
                     onAppInfo(app)
                 },
                 onDismiss = ::closeSheets,
+                isHidden = app.key in hidden,
+                words = searchWords[app.key].orEmpty(),
+                onToggleHidden = {
+                    onHiddenChange(if (app.key in hidden) hidden - app.key else hidden + app.key)
+                    closeSheets()
+                },
+                onSetWords = { list ->
+                    onSearchWordsChange(SearchWords.set(searchWords, app.key, list))
+                    closeSheets()
+                },
             )
         } else if (heldFolder != null) {
             val folder = heldFolder
@@ -297,7 +317,9 @@ fun HomeRoute(
             favorites = favorites,
             folders = folderViews,
             openFolder = openFolder,
-            allApps = sorted,
+            allApps = shownApps,
+            hiddenApps = hiddenApps,
+            isHidden = { it.key in hidden },
             query = query,
             opening = opening,
             onQueryChange = { query = it },
