@@ -326,11 +326,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * A number opens the phone app with it dialed (you still press call). A name opens the
-     * phone app, passing the name along for a phone app that can search with it.
+     * A number opens the phone app with it dialed (you still press call). A name opens Newt
+     * Phone's Contacts searched for it (other phone apps just open). Nothing calls by itself.
      */
     private fun call(command: Command.Call) {
-        val intent = if (command.isNumber) {
+        val intent = if (command.who.isEmpty()) {
+            Intent(Intent.ACTION_DIAL)
+        } else if (command.isNumber) {
             Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", command.who.filter { it.isDigit() || it in "+*#" }, null))
         } else {
             Intent(Intent.ACTION_DIAL).putExtra(EXTRA_CONTACT_QUERY, command.who)

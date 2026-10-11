@@ -57,6 +57,22 @@ class CommandsTest {
     }
 
     @Test
+    fun `the start of a command word holds back auto-open`() {
+        assertTrue(Commands.mightBecomeCommand("hel"))
+        assertTrue(Commands.mightBecomeCommand("Ca"))
+        assertTrue(Commands.mightBecomeCommand("blu"))
+        assertEquals(false, Commands.mightBecomeCommand("sig"))
+        assertEquals(false, Commands.mightBecomeCommand("cam"))
+        assertEquals(false, Commands.mightBecomeCommand("call mom"))
+        assertEquals(false, Commands.mightBecomeCommand(""))
+    }
+
+    @Test
+    fun `call on its own opens the phone app`() {
+        assertEquals(Command.Call(""), ready("call"))
+    }
+
+    @Test
     fun `app names are not commands`() {
         assertNull(Commands.parse("signal"))
         assertNull(Commands.parse("tim"))
@@ -71,6 +87,7 @@ class CommandsTest {
         assertEquals("start a 1 min 30 s timer", Commands.describe(Command.Timer(90), time))
         assertEquals("set an alarm for 7:05", Commands.describe(Command.Alarm(7, 5), time))
         assertEquals("dial 555 0100", Commands.describe(Command.Call("555 0100"), time))
-        assertEquals("call Mom with your phone app", Commands.describe(Command.Call("Mom"), time))
+        assertEquals("find Mom in your contacts", Commands.describe(Command.Call("Mom"), time))
+        assertEquals("open your phone app (or type a name: call mom)", Commands.describe(Command.Call(""), time))
     }
 }

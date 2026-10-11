@@ -40,7 +40,8 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   - `alarm 7:30`, `alarm 6pm`, `alarm 1845`: sets an alarm in your clock app.
   - `flashlight` or `torch` (or `flashlight on` / `off`). While it's on, the status line
     shows `[light on]`.
-  - `call mom` opens your phone app; `call 555 0100` opens it with the number dialed.
+  - `call mom` opens Newt Phone's Contacts with "mom" searched; `call 555 0100` opens
+    the dialpad with the number in. You still press call. `call` alone opens the phone app.
   - `wifi`, `bluetooth` and `files` open those.
 - **Home and Back** clear the prompt and return to favorites.
 - **The gadget look:** faint scanlines and a dim ASCII newt behind everything, the

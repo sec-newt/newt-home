@@ -74,7 +74,7 @@ newt@home:~$ date
 
 ## The prompt (search)
 
-**Commands (done), a short list on purpose:** `timer 10`, `alarm 7:30`, `flashlight`, `call mom` (handed to the phone app), `wifi`, `bluetooth`, `files` (opens your file manager) and `help`. Each shows what it will do and runs only on Enter or a tap; a command word never auto-opens an app. `call mom` passes the name to the phone app; Newt Phone still needs a small change to search with it. Plain app names always work. No file management in the launcher: it would need Android's broadest storage permission.
+**Commands (done), a short list on purpose:** `timer 10`, `alarm 7:30`, `flashlight`, `call mom` (handed to the phone app), `wifi`, `bluetooth`, `files` (opens your file manager) and `help`. Each shows what it will do and runs only on Enter or a tap; a command word, or the start of one (`hel`), never auto-opens an app. `call mom` opens Newt Phone's Contacts searched for the name (needs Newt Phone with that support). Plain app names always work. No file management in the launcher: it would need Android's broadest storage permission.
 
 - **Type part of a name** and the columns are replaced by `find …` results, each with its icon. Capitals never matter.
 - **Loose matching:** `mgnf` finds Magnifier. It also matches folder names, my own search words and Android's app type (game, music, maps).
@@ -125,7 +125,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 | App shortcuts | Long-press shortcuts, such as favorite contacts from Newt Phone | `LauncherApps` shortcuts (default launcher only) | Medium |
 | Work profile / Private Space | Show those apps in their own section | `LauncherApps` profiles | Medium |
 
-**Stretch ideas:** a Dragon-style gesture compass that shows labeled targets while you drag (never the only way to reach an app); more prompt words like `call mom`.
+**Stretch ideas:** a Dragon-style gesture compass that shows labeled targets while you drag (never the only way to reach an app).
 
 ## Newt family
 

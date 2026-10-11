@@ -49,7 +49,7 @@ object Commands {
         CommandHelp("timer 10", "A 10 minute timer. Also timer 90s, timer 1h 30m"),
         CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845"),
         CommandHelp("flashlight", "Turns the flashlight on or off. Also torch"),
-        CommandHelp("call mom", "Opens the phone app to call. A number dials it"),
+        CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call"),
         CommandHelp("wifi", "Wi-Fi on or off and networks"),
         CommandHelp("bluetooth", "Bluetooth settings"),
         CommandHelp("files", "Opens your files app"),
@@ -81,17 +81,25 @@ object Commands {
                 "off" -> CommandMatch.Ready(Command.Flashlight(false))
                 else -> CommandMatch.Incomplete(word, "$word, $word on, or $word off")
             }
-            "call" -> if (rest.isEmpty()) {
-                CommandMatch.Incomplete("call", "who? like call mom or call 555 0100")
-            } else {
-                CommandMatch.Ready(Command.Call(rest))
-            }
+            "call" -> CommandMatch.Ready(Command.Call(rest))
             "wifi", "wi-fi" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Wifi) else null
             "bluetooth" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Bluetooth) else null
             "files" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Files) else null
             "help", "?" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Help) else null
             else -> null
         }
+    }
+
+    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help")
+
+    /**
+     * Whether what's typed could still become a command (`hel` on the way to `help`). The
+     * prompt doesn't auto-open an app then, so a command is never beaten to it by an app
+     * whose name starts the same way. One more letter, or Enter, opens the app as usual.
+     */
+    fun mightBecomeCommand(typed: String): Boolean {
+        val text = typed.trim().lowercase()
+        return text.isNotEmpty() && ' ' !in text && WORDS.any { it.startsWith(text) }
     }
 
     /**
@@ -155,7 +163,11 @@ object Commands {
             false -> "turn the flashlight off"
             null -> "switch the flashlight on or off"
         }
-        is Command.Call -> if (command.isNumber) "dial ${command.who}" else "call ${command.who} with your phone app"
+        is Command.Call -> when {
+            command.who.isEmpty() -> "open your phone app (or type a name: call mom)"
+            command.isNumber -> "dial ${command.who}"
+            else -> "find ${command.who} in your contacts"
+        }
         Command.Wifi -> "open Wi-Fi"
         Command.Bluetooth -> "open Bluetooth settings"
         Command.Files -> "open your files app"
