@@ -45,6 +45,7 @@ import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Website
 import java.util.UUID
 import io.github.secnewt.home.ui.HomeRoute
@@ -52,6 +53,9 @@ import io.github.secnewt.home.ui.theme.NewtTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** The most of an app's own shortcuts shown on its press-and-hold menu. */
+private const val MAX_APP_SHORTCUTS = 5
 
 /** Extra on a dial intent with a name to look up, for Newt Phone. Other phone apps ignore it. */
 const val EXTRA_CONTACT_QUERY = "io.github.secnewt.extra.CONTACT_QUERY"
@@ -162,6 +166,8 @@ class MainActivity : ComponentActivity() {
                     },
                     onAppInfo = ::showAppInfo,
                     onRemoveShortcut = ::removeShortcut,
+                    appShortcuts = ::shortcutsFor,
+                    onOpenAppShortcut = ::openAppShortcut,
                     onAddWebsite = ::addWebsite,
                     onClock = ::openClock,
                     onDate = ::openCalendar,
@@ -454,6 +460,45 @@ class MainActivity : ComponentActivity() {
         websites = websites + Website(UUID.randomUUID().toString(), name, url)
         store.setWebsites(websites)
         say("Added $name to All apps")
+    }
+
+    /**
+     * An app's own shortcuts (the ones it offers to home screens), best first. Android only
+     * shares these with the default home app; otherwise there are none.
+     */
+    private fun shortcutsFor(app: LauncherApp): List<AppShortcut> {
+        val target = find(app) ?: return emptyList()
+        if (target.shortcut != null) return emptyList()
+        return try {
+            if (!launcherApps.hasShortcutHostPermission()) return emptyList()
+            val query = LauncherApps.ShortcutQuery()
+                .setPackage(target.component.packageName)
+                .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
+            launcherApps.getShortcuts(query, target.user).orEmpty()
+                .filter { it.isEnabled }
+                .sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+                .take(MAX_APP_SHORTCUTS)
+                .mapNotNull { info ->
+                    val label = (info.shortLabel ?: info.longLabel)?.toString()?.trim().orEmpty()
+                    if (label.isEmpty()) return@mapNotNull null
+                    val long = info.longLabel?.toString()?.trim()?.takeIf { it.isNotEmpty() && it != label }
+                    AppShortcut(info.`package`, info.id, label, long)
+                }
+        } catch (e: RuntimeException) {
+            // No longer the default home app, or the app's user is locked.
+            emptyList()
+        }
+    }
+
+    private fun openAppShortcut(app: LauncherApp, shortcut: AppShortcut) {
+        val user = find(app)?.user ?: return
+        try {
+            launcherApps.startShortcut(shortcut.packageName, shortcut.id, null, null, user)
+            store.recordUse(app.key)
+            uses = store.uses()
+        } catch (e: RuntimeException) {
+            say("Couldn't open ${shortcut.label}")
+        }
     }
 
     private fun showAppInfo(app: LauncherApp) {
