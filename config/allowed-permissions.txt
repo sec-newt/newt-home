@@ -22,6 +22,10 @@ com.android.alarm.permission.SET_ALARM
 # Phone. Signature-level, so Newt Phone grants it only to Newt-signed apps.
 io.github.secnewt.dialer.permission.MISSED_CALL_COUNT
 #
+# Private space in All apps: Android grants this only to the default home app.
+# Its apps stay hidden while Private space is locked.
+android.permission.ACCESS_HIDDEN_PROFILES
+#
 # Added automatically by AndroidX so the app's own broadcast receivers stay private:
 io.github.secnewt.home.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 io.github.secnewt.home.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

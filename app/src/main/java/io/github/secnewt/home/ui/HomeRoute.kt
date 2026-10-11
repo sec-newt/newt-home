@@ -24,6 +24,9 @@ import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.ProfileKind
+import io.github.secnewt.home.apps.ProfileView
+import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.SearchWords
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -58,6 +61,8 @@ fun HomeRoute(
     onAddWebsite: (name: String, url: String) -> Unit = { _, _ -> },
     appShortcuts: (LauncherApp) -> List<AppShortcut> = { emptyList() },
     onOpenAppShortcut: (LauncherApp, AppShortcut) -> Unit = { _, _ -> },
+    profileViews: List<ProfileView> = emptyList(),
+    onToggleProfileLock: (ProfileKind) -> Unit = {},
     onClock: () -> Unit,
     onDate: () -> Unit,
     agenda: Agenda = Agenda.Off,
@@ -104,7 +109,11 @@ fun HomeRoute(
         reset()
     }
 
-    val sorted = remember(apps) { apps.sortedBy { AppSearch.normalize(it.name) } }
+    // Your own apps, A–Z; work apps get their own section at the end of All apps.
+    val sorted = remember(apps) { apps.filter { it.profile == ProfileKind.MAIN }.sortedBy { AppSearch.normalize(it.name) } }
+    val sections = remember(profileViews) {
+        Profiles.ordered(profileViews).map { view -> view.copy(apps = view.apps.sortedBy { AppSearch.normalize(it.name) }) }
+    }
     // Hidden apps leave All apps and folders (they fold away at the end of All apps).
     val (hiddenApps, shownApps) = remember(sorted, hidden) { sorted.partition { it.key in hidden } }
     val favorites = remember(apps, favoriteKeys) {
@@ -346,6 +355,8 @@ fun HomeRoute(
             allApps = shownApps,
             hiddenApps = hiddenApps,
             isHidden = { it.key in hidden },
+            profiles = sections,
+            onToggleProfileLock = onToggleProfileLock,
             onAddWebsite = {
                 closeSheets()
                 addWebsite = true

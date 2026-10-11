@@ -22,6 +22,8 @@ data class LauncherApp(
     val url: String? = null,
     /** Something that needs attention, shown in red under the name, like "2 missed" under Phone. */
     val alert: String? = null,
+    /** Which part of the phone it's in: your own apps, a work profile, or Private space. */
+    val profile: ProfileKind = ProfileKind.MAIN,
 ) {
     val isShortcut: Boolean get() = from != null || url != null
 }
