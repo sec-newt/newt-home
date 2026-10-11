@@ -46,7 +46,7 @@ class HomeScreenTest {
 
     private val apps = listOf(
         "Phone", "Messages", "Signal", "Camera", "Vanadium", "Settings", "Sudoku", "Magnifier", "Proton Mail",
-    ).map { LauncherApp(key = it, name = it) }
+    ).map { LauncherApp(key = it, name = it) } + LauncherApp(key = "shortcut:vanadium/weather", name = "Weather.gov", from = "Vanadium")
     private val favorites = apps.take(5)
     private fun app(name: String) = apps.first { it.name == name }
 
@@ -458,6 +458,33 @@ class HomeScreenTest {
         composeRule.onNodeWithText("Camera").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("Show all apps").performClick()
         composeRule.onNodeWithText("Camera").assertIsDisplayed()
+    }
+
+    @Test
+    fun pinShortcutSheet() = render("pin_shortcut_dark", dark = true) {
+        WithHoldMenu(
+            menuOpen = true,
+            menu = { PinShortcutSheet(name = "Weather.gov", from = "Vanadium", onAdd = {}, onCancel = {}) },
+        ) { Home() }
+    }
+
+    @Test
+    fun pinShortcutSheetLargeText() = render("pin_shortcut_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(
+            menuOpen = true,
+            menu = { PinShortcutSheet(name = "Weather.gov", from = "Vanadium", onAdd = {}, onCancel = {}) },
+        ) { Home() }
+    }
+
+    @Test
+    fun holdMenuOnAShortcut() = render("hold_menu_shortcut", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Weather.gov"), isFavorite = false, folder = null) }) { Home() }
+    }
+
+    @Test
+    fun shortcutsSayWhereTheyCameFrom() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.onNodeWithText("Vanadium shortcut").assertIsDisplayed()
     }
 
     @Test

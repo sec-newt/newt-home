@@ -987,8 +987,10 @@ private fun AppRow(
                 fontSize = if (compact) 17.sp else 18.sp,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            if (note != null) {
-                Text(note, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // A shortcut says where it came from, like "Vanadium shortcut", so it's not mistaken for an app.
+            val line = listOfNotNull(app.from?.let { "$it shortcut" }, note).joinToString(" · ").ifEmpty { null }
+            if (line != null) {
+                Text(line, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

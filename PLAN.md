@@ -164,6 +164,12 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Letter strip in All apps
   - [x] Letter grid in All apps
 
+- [ ] Phase 2
+  - [x] Accept "Add to home screen" (websites from the browser), with Remove shortcut
+  - [ ] Add a website by hand
+  - [ ] App shortcuts on the press-and-hold menu
+  - [ ] Newt Phone missed-call count
+
 ## GrapheneOS notes
 
 - **Making it the home app:** Settings → Apps → Default apps → Home app. Keep the stock launcher installed as a fallback.

@@ -13,7 +13,14 @@ data class LauncherApp(
     val key: String,
     val name: String,
     val icon: ImageBitmap? = null,
-)
+    /**
+     * For a shortcut (like a website added from the browser's "Add to home screen"), the
+     * app it came from, such as "Vanadium". Null for ordinary apps.
+     */
+    val from: String? = null,
+) {
+    val isShortcut: Boolean get() = from != null
+}
 
 /** The home screen's favorites, as an ordered list of app keys. */
 object Favorites {

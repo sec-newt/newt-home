@@ -157,6 +157,7 @@ fun HoldMenu(
     words: List<String> = emptyList(),
     onToggleHidden: () -> Unit = {},
     onSetWords: (List<String>) -> Unit = {},
+    onRemoveShortcut: () -> Unit = {},
 ) {
     var page by rememberSaveable { mutableStateOf(AppMenuPage.MAIN) }
     MenuSheet(
@@ -191,7 +192,18 @@ fun HoldMenu(
                 } else {
                     MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden)
                 }
-                MenuOption("App info", "Android's page for this app", onAppInfo)
+                val from = app.from
+                if (from != null) {
+                    MenuOption(
+                        "Remove shortcut",
+                        "Takes it off Newt Home. You can add it again from $from",
+                        onRemoveShortcut,
+                        danger = true,
+                    )
+                    MenuOption("$from info", "Android's page for $from, which made this shortcut", onAppInfo)
+                } else {
+                    MenuOption("App info", "Android's page for this app", onAppInfo)
+                }
                 SheetButton("Cancel", onDismiss)
             }
             AppMenuPage.WORDS -> WordsField(
@@ -539,5 +551,31 @@ fun HelpSheet(commands: List<CommandHelp>, onPick: (String) -> Unit, onDismiss: 
         )
         commands.forEach { MenuOption("~$ ${it.example}", it.does, onClick = { onPick(it.example) }) }
         SheetButton("Close", onDismiss)
+    }
+}
+
+/**
+ * "Add to Newt Home?": shown when a browser's "Add to home screen" (or another app) asks
+ * to pin a shortcut. Nothing is added until you say so.
+ */
+@Composable
+fun PinShortcutSheet(name: String, from: String, onAdd: () -> Unit, onCancel: () -> Unit) {
+    MenuSheet(onDismiss = onCancel, header = { SheetTitle("Add to Newt Home?") }) {
+        Text(
+            name,
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+        Text(
+            "A shortcut from $from. It goes in All apps and search; press and hold it to add it to favorites or a folder.",
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+        SheetButton("Add", onAdd)
+        SheetButton("Cancel", onCancel)
     }
 }
