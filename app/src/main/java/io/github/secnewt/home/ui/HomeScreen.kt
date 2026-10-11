@@ -1,6 +1,16 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Popup
+import io.github.secnewt.home.apps.Letters
+import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -401,6 +411,11 @@ private fun AppsPage(
 ) {
     val pullDown = rememberEdgePull(up = false, onPull = onHome)
     var showHidden by remember { mutableStateOf(false) }
+    // Grouped the way the list is sorted (accents ignored), so each letter appears once.
+    // The prompt line is row 0, so the first header is row 1.
+    val groups = remember(allApps) { Letters.groups(allApps, { it.name }, offset = 1) }
+    val list = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     Box(
         Modifier
             .fillMaxSize()
@@ -408,37 +423,124 @@ private fun AppsPage(
     ) {
         GadgetBackground()
         Column(Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .nestedScroll(pullDown),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                item { PromptLine("ls") }
-                var letter = ""
-                for (app in allApps) {
-                    // Grouped the way the list is sorted (accents ignored), so each letter appears once.
-                    val first = AppSearch.normalize(app.name).take(1).uppercase()
-                    if (first != letter) {
-                        letter = first
-                        item(key = "letter:$first") { LetterHeader(first) }
+            Row(Modifier.weight(1f)) {
+                LazyColumn(
+                    state = list,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .nestedScroll(pullDown),
+                    contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                ) {
+                    item { PromptLine("ls") }
+                    for (group in groups) {
+                        item(key = "letter:${group.letter}") { LetterHeader(group.letter) }
+                        items(group.items, key = { it.key }) { app -> AppRow(app, onOpen = onOpen, onHold = onHold) }
                     }
-                    item(key = app.key) { AppRow(app, onOpen = onOpen, onHold = onHold) }
-                }
-                if (hiddenApps.isNotEmpty()) {
-                    // Hidden apps stay findable: a word at the end of the list, folded away.
-                    item(key = "hidden") {
-                        HiddenToggle(hiddenApps.size, showHidden) { showHidden = !showHidden }
-                    }
-                    if (showHidden) {
-                        items(hiddenApps, key = { "hidden:" + it.key }) {
-                            AppRow(it, onOpen = onOpen, onHold = onHold, note = "hidden")
+                    if (hiddenApps.isNotEmpty()) {
+                        // Hidden apps stay findable: a word at the end of the list, folded away.
+                        item(key = "hidden") {
+                            HiddenToggle(hiddenApps.size, showHidden) { showHidden = !showHidden }
+                        }
+                        if (showHidden) {
+                            items(hiddenApps, key = { "hidden:" + it.key }) {
+                                AppRow(it, onOpen = onOpen, onHold = onHold, note = "hidden")
+                            }
                         }
                     }
                 }
+                if (groups.size > 1) {
+                    LetterStrip(groups.map { it.letter }) { i -> scope.launch { list.scrollToItem(groups[i].index) } }
+                }
             }
             NavRow { NavButton("↓ Home", "Home", Modifier.weight(1f), onHome) }
+        }
+    }
+}
+
+/**
+ * The letter strip down the right of All apps: touch or slide a thumb along it and the
+ * list jumps to that letter, with the letter shown big in the middle of the screen while
+ * your thumb is down. Its letters are sized to fit, so they don't grow with the text size.
+ * Screen readers skip it; the letter headers are headings, which they can already jump by.
+ */
+@Composable
+private fun LetterStrip(letters: List<String>, onLetter: (Int) -> Unit) {
+    var active by remember { mutableStateOf<Int?>(null) }
+    val haptics = LocalHapticFeedback.current
+    val latest = rememberUpdatedState(onLetter)
+    fun touch(y: Float, height: Float) {
+        val i = Letters.pick(y, height, letters.size)
+        if (i != active) {
+            active = i
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            latest.value(i)
+        }
+    }
+    BoxWithConstraints(
+        Modifier
+            .width(40.dp)
+            .fillMaxHeight()
+            .padding(vertical = 8.dp)
+            .clearAndSetSemantics { },
+    ) {
+        val height = constraints.maxHeight.toFloat()
+        val density = LocalDensity.current
+        // Each letter gets an equal share of the height; the text fills about two thirds.
+        val size = with(density) { (maxHeight / letters.size * 0.66f).coerceAtMost(18.dp).toPx() / fontScale / this.density }.sp
+        Column(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = if (active != null) 0.95f else 0.6f))
+                .pointerInput(letters, height) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        touch(down.position.y, height)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull() ?: break
+                            if (!change.pressed) break
+                            change.consume()
+                            touch(change.position.y, height)
+                        }
+                        active = null
+                    }
+                },
+            verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            letters.forEachIndexed { i, letter ->
+                Text(
+                    letter,
+                    fontFamily = NewtFonts.Mono,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = size,
+                    lineHeight = size,
+                    color = if (i == active) LocalTerminalColors.current.prompt else MaterialTheme.colorScheme.secondary,
+                )
+            }
+        }
+    }
+    val shown = active
+    if (shown != null) {
+        Popup(alignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .size(120.dp)
+                    .glow(true, MaterialTheme.colorScheme.secondary, neonOutline(2.dp), RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    letters[shown],
+                    fontFamily = NewtFonts.Mono,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 72.sp,
+                    color = LocalTerminalColors.current.prompt,
+                )
+            }
         }
     }
 }
