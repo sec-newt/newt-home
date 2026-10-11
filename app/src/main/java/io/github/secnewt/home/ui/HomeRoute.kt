@@ -53,6 +53,7 @@ fun HomeRoute(
     onFoldersChange: (List<Folder>) -> Unit,
     onOpenFolderChange: (String?) -> Unit,
     onAppInfo: (LauncherApp) -> Unit,
+    onRemoveShortcut: (LauncherApp) -> Unit = {},
     onClock: () -> Unit,
     onDate: () -> Unit,
     agenda: Agenda = Agenda.Off,
@@ -234,6 +235,10 @@ fun HomeRoute(
                     onAppInfo(app)
                 },
                 onDismiss = ::closeSheets,
+                onRemoveShortcut = {
+                    closeSheets()
+                    onRemoveShortcut(app)
+                },
                 isHidden = app.key in hidden,
                 words = searchWords[app.key].orEmpty(),
                 onToggleHidden = {

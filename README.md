@@ -61,7 +61,13 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   home screen. Swipe down from the top edge to bring Android's bar and your
   notifications back.
 
-Websites as apps and app shortcuts are next (see the plan).
+- **Websites as apps.** In your browser (Vanadium or most others), choose **Add to home
+  screen**. Newt Home asks first, then lists the site in All apps and search with a
+  letter tile and "Vanadium shortcut" under its name. Press and hold it to add it to
+  favorites or a folder, or **Remove shortcut**. This needs Newt Home to be your default
+  home app.
+
+App shortcuts and adding a website by hand are next (see the plan).
 
 ## Privacy
 

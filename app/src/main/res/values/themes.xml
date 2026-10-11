@@ -4,6 +4,13 @@
         <item name="android:windowBackground">@color/home_background</item>
         <item name="android:colorBackground">@color/home_background</item>
     </style>
+    <!-- See-through, for a sheet over whatever app asked (the "Add to home screen" question). -->
+    <style name="Theme.NewtHome.Sheet" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackground">@color/home_background</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
+    </style>
     <!-- Tokyo Night Day background in light mode (true black in values-night). -->
     <color name="home_background">#FFFFFF</color>
 </resources>

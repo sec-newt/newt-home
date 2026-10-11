@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
 import android.database.ContentObserver
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
@@ -106,6 +107,9 @@ class MainActivity : ComponentActivity() {
         override fun onPackageChanged(packageName: String, user: UserHandle) = reload()
         override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = reload()
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = reload()
+
+        // A website added from the browser, or a shortcut removed or renamed.
+        override fun onShortcutsChanged(packageName: String, shortcuts: List<ShortcutInfo>, user: UserHandle) = reload()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,6 +157,7 @@ class MainActivity : ComponentActivity() {
                         store.setOpenFolder(it)
                     },
                     onAppInfo = ::showAppInfo,
+                    onRemoveShortcut = ::removeShortcut,
                     onClock = ::openClock,
                     onDate = ::openCalendar,
                     agenda = agenda,
@@ -391,13 +396,37 @@ class MainActivity : ComponentActivity() {
     private fun open(app: LauncherApp) {
         val target = find(app) ?: return
         try {
-            launcherApps.startMainActivity(target.component, target.user, null, null)
+            val shortcut = target.shortcut
+            if (shortcut != null) {
+                launcherApps.startShortcut(shortcut, null, null)
+            } else {
+                launcherApps.startMainActivity(target.component, target.user, null, null)
+            }
             store.recordUse(app.key)
             uses = store.uses()
         } catch (e: RuntimeException) {
             // The app was removed or disabled a moment ago, or refuses to open.
             say("Couldn't open ${app.name}")
         }
+    }
+
+    /**
+     * Unpins a shortcut, like a website added from the browser. Android only lets the home
+     * app set the whole list of its pins for a package, so the others are kept.
+     */
+    private fun removeShortcut(app: LauncherApp) {
+        val target = find(app)?.shortcut ?: return
+        val keep = installed.mapNotNull { it.shortcut }
+            .filter { it.`package` == target.`package` && it.id != target.id }
+            .map { it.id }
+        try {
+            launcherApps.pinShortcuts(target.`package`, keep, target.userHandle)
+            say("Removed ${app.name}")
+        } catch (e: RuntimeException) {
+            // No longer the default home app, so Android won't let it change pins.
+            say("Couldn't remove ${app.name}")
+        }
+        reload()
     }
 
     private fun showAppInfo(app: LauncherApp) {
