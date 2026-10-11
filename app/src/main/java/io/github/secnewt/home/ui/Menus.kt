@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.apps.AgendaText
+import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.CommandHelp
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
@@ -160,6 +161,8 @@ fun HoldMenu(
     onToggleHidden: () -> Unit = {},
     onSetWords: (List<String>) -> Unit = {},
     onRemoveShortcut: () -> Unit = {},
+    shortcuts: List<AppShortcut> = emptyList(),
+    onOpenShortcut: (AppShortcut) -> Unit = {},
 ) {
     var page by rememberSaveable { mutableStateOf(AppMenuPage.MAIN) }
     MenuSheet(
@@ -172,6 +175,18 @@ fun HoldMenu(
     ) {
         when (page) {
             AppMenuPage.MAIN -> {
+                // The app's own shortcuts first: they're what you'd hold an app to reach.
+                if (shortcuts.isNotEmpty()) {
+                    MenuHeading("Jump to")
+                    for (shortcut in shortcuts) {
+                        MenuOption(
+                            shortcut.label,
+                            shortcut.description ?: "In ${app.name}",
+                            { onOpenShortcut(shortcut) },
+                        )
+                    }
+                    MenuHeading("Options")
+                }
                 if (isFavorite) {
                     MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite)
                     if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) })
@@ -467,6 +482,20 @@ private fun WordsField(appName: String, initial: List<String>, onSave: (List<Str
     val parsed = SearchWords.parse(text)
     SheetButton(if (parsed.isEmpty() && initial.isNotEmpty()) "Remove all words" else "Save words") { onSave(parsed) }
     SheetButton("Back", onBack)
+}
+
+@Composable
+private fun MenuHeading(text: String) {
+    Text(
+        text,
+        fontFamily = NewtFonts.Mono,
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        color = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier
+            .padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
+            .semantics { heading() },
+    )
 }
 
 @Composable

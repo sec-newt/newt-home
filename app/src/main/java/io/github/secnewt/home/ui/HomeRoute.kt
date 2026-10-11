@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Command
 import io.github.secnewt.home.apps.CommandMatch
 import io.github.secnewt.home.apps.Commands
@@ -55,6 +56,8 @@ fun HomeRoute(
     onAppInfo: (LauncherApp) -> Unit,
     onRemoveShortcut: (LauncherApp) -> Unit = {},
     onAddWebsite: (name: String, url: String) -> Unit = { _, _ -> },
+    appShortcuts: (LauncherApp) -> List<AppShortcut> = { emptyList() },
+    onOpenAppShortcut: (LauncherApp, AppShortcut) -> Unit = { _, _ -> },
     onClock: () -> Unit,
     onDate: () -> Unit,
     agenda: Agenda = Agenda.Off,
@@ -205,6 +208,8 @@ fun HomeRoute(
     }
 
     val held = menuFor?.let { key -> apps.firstOrNull { it.key == key } }
+    // Asked once each time a menu opens, so it's always the app's current list.
+    val heldShortcuts = remember(held?.key) { held?.let(appShortcuts).orEmpty() }
     val heldFolder = folderMenuFor?.let { name -> folderViews.firstOrNull { it.name == name } }
     val folderNames = folders.map { it.name }
     val menu: @Composable () -> Unit = {
@@ -241,6 +246,11 @@ fun HomeRoute(
                 onRemoveShortcut = {
                     closeSheets()
                     onRemoveShortcut(app)
+                },
+                shortcuts = heldShortcuts,
+                onOpenShortcut = { shortcut ->
+                    reset()
+                    onOpenAppShortcut(app, shortcut)
                 },
                 isHidden = app.key in hidden,
                 words = searchWords[app.key].orEmpty(),

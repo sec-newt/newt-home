@@ -18,3 +18,9 @@ object Shortcuts {
         return rest.substring(0, slash) to rest.substring(slash + 1)
     }
 }
+
+/**
+ * One of an app's own shortcuts, like Signal's "New message" or a chat it offers: shown at
+ * the top of the app's press-and-hold menu.
+ */
+data class AppShortcut(val packageName: String, val id: String, val label: String, val description: String?)

@@ -167,7 +167,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 - [ ] Phase 2
   - [x] Accept "Add to home screen" (websites from the browser), with Remove shortcut
   - [x] Add a website by hand (opens in the default browser)
-  - [ ] App shortcuts on the press-and-hold menu
+  - [x] App shortcuts on the press-and-hold menu ("Jump to")
   - [ ] Newt Phone missed-call count
 
 ## GrapheneOS notes

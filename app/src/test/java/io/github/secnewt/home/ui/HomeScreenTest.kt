@@ -28,6 +28,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Connection
@@ -555,6 +556,47 @@ class HomeScreenTest {
     fun websitesShowTheirAddress() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
         composeRule.onNodeWithText("website · bank.example").assertIsDisplayed()
+    }
+
+    private val signalShortcuts = listOf(
+        AppShortcut("org.signal", "new", "New message", null),
+        AppShortcut("org.signal", "chat-sam", "Sam", "Open your chat with Sam"),
+    )
+
+    @Composable
+    private fun SignalMenu(onOpenShortcut: (AppShortcut) -> Unit = {}) = HoldMenu(
+        app = app("Signal"),
+        isFavorite = true,
+        canMoveUp = true,
+        canMoveDown = true,
+        folderNames = folders.map { it.name },
+        currentFolder = null,
+        onToggleFavorite = {},
+        onMove = {},
+        onMoveToFolder = {},
+        onMoveToNewFolder = {},
+        onAppInfo = {},
+        onDismiss = {},
+        shortcuts = signalShortcuts,
+        onOpenShortcut = onOpenShortcut,
+    )
+
+    @Test
+    fun holdMenuWithAppShortcuts() = render("hold_menu_app_shortcuts", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { SignalMenu() }) { Home() }
+    }
+
+    @Test
+    fun holdMenuWithAppShortcutsLargeText() = render("hold_menu_app_shortcuts_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { SignalMenu() }) { Home() }
+    }
+
+    @Test
+    fun tappingAnAppShortcutOpensIt() {
+        var opened: AppShortcut? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { SignalMenu { opened = it } } }
+        composeRule.onNodeWithText("Sam").performClick()
+        assertEquals("chat-sam", opened?.id)
     }
 
     @Test

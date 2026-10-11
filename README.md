@@ -72,7 +72,11 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   an optional name. It opens in your browser and shows "website · weather.gov" under its
   name.
 
-App shortcuts are next (see the plan).
+- **App shortcuts.** Press and hold an app and its own shortcuts come first, under
+  **Jump to**: things like Signal's "New message" or a recent chat. Tap one to go straight
+  there. (Android shares these only with the default home app.)
+
+The Newt Phone missed-call count is next (see the plan).
 
 ## Privacy
 
