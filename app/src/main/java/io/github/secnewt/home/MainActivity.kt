@@ -45,6 +45,7 @@ import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.MissedCalls
 import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Website
 import java.util.UUID
@@ -73,6 +74,13 @@ class MainActivity : ComponentActivity() {
     private var hidden by mutableStateOf<Set<String>>(emptySet())
     private var searchWords by mutableStateOf<Map<String, List<String>>>(emptyMap())
     private var websites by mutableStateOf<List<Website>>(emptyList())
+
+    // "2 missed" under Phone, from Newt Phone (only the number, only for Newt-signed apps).
+    private var missed by mutableStateOf<Int?>(null)
+    private lateinit var missedCalls: MissedCalls
+    private val missedChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) = refreshMissed()
+    }
     private var resetSignal by mutableIntStateOf(0)
 
     // Goes up each time the home screen comes back into view, which replays the boot type-out.
@@ -136,13 +144,14 @@ class MainActivity : ComponentActivity() {
         hidden = store.hidden()
         searchWords = store.searchWords()
         websites = store.websites()
+        missedCalls = MissedCalls(this)
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         reload()
 
         setContent {
             NewtTheme {
                 HomeRoute(
-                    apps = installed.map { it.app } + websites.map { it.toApp() },
+                    apps = installed.map { withAlert(it.app) } + websites.map { it.toApp() },
                     favoriteKeys = favoriteKeys,
                     folders = folders,
                     openFolder = openFolder,
@@ -200,11 +209,17 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         watcher.start()
+        try {
+            contentResolver.registerContentObserver(MissedCalls.URI, false, missedChanges)
+        } catch (e: RuntimeException) {
+            // Newt Phone isn't installed; the count is just left off.
+        }
     }
 
     override fun onStop() {
         watcher.stop()
         stopWatchingCalendar()
+        contentResolver.unregisterContentObserver(missedChanges)
         super.onStop()
     }
 
@@ -228,6 +243,7 @@ class MainActivity : ComponentActivity() {
         bootKey++
         // Calendar access can be turned off in Settings while we're away.
         refreshAgenda()
+        refreshMissed()
     }
 
     override fun onDestroy() {
@@ -393,6 +409,15 @@ class MainActivity : ComponentActivity() {
             say("The flashlight is busy. Close the camera app and try again.")
         } catch (e: IllegalArgumentException) {
             say("This phone has no flashlight")
+        }
+    }
+
+    private fun withAlert(app: LauncherApp): LauncherApp =
+        if (MissedCalls.isNewtPhone(app.key)) app.copy(alert = MissedCalls.label(missed)) else app
+
+    private fun refreshMissed() {
+        lifecycleScope.launch {
+            missed = withContext(Dispatchers.IO) { missedCalls.count() }
         }
     }
 

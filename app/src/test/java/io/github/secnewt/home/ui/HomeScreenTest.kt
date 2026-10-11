@@ -600,6 +600,16 @@ class HomeScreenTest {
     }
 
     @Test
+    fun missedCallsUnderPhone() = render("missed_calls_dark", dark = true) {
+        Home(favs = favorites.map { if (it.name == "Phone") it.copy(alert = "2 missed") else it })
+    }
+
+    @Test
+    fun missedCallsUnderPhoneLargeText() = render("missed_calls_200_percent", dark = false, fontScale = 2f) {
+        Home(favs = favorites.map { if (it.name == "Phone") it.copy(alert = "2 missed") else it })
+    }
+
+    @Test
     fun tappingAnAppOpensIt() {
         var opened: LauncherApp? = null
         var went: Screen? = null

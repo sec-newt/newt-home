@@ -168,7 +168,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Accept "Add to home screen" (websites from the browser), with Remove shortcut
   - [x] Add a website by hand (opens in the default browser)
   - [x] App shortcuts on the press-and-hold menu ("Jump to")
-  - [ ] Newt Phone missed-call count
+  - [x] Newt Phone missed-call count ("2 missed" under Phone)
 
 ## GrapheneOS notes
 
