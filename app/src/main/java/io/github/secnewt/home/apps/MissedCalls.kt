@@ -26,7 +26,8 @@ class MissedCalls(private val context: Context) {
     companion object {
         const val NEWT_PHONE = "io.github.secnewt.dialer"
         const val PERMISSION = "$NEWT_PHONE.permission.MISSED_CALL_COUNT"
-        val URI: Uri = Uri.parse("content://$NEWT_PHONE.missedcalls/count")
+        // Built on first use, so the plain-Kotlin tests can use the rest without Android.
+        val URI: Uri by lazy { Uri.parse("content://$NEWT_PHONE.missedcalls/count") }
 
         /** "2 missed" under Phone; nothing when there are none. */
         fun label(count: Int?): String? = count?.takeIf { it > 0 }?.let { "$it missed" }
