@@ -30,7 +30,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   Press and hold an app and choose **Move to folder** (or make a new one there).
   Press and hold a folder to rename, move or delete it; deleting a folder never
   removes its apps. It starts with AI, Blind tools, Games and Productivity.
-- **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt.
+- **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt. The **letter
+  strip** down the right side jumps to a letter: touch it, or slide your thumb along it,
+  and the letter shows big in the middle of the screen while the list follows.
 - **Hide apps.** Press and hold an app and choose **Hide from lists**. It leaves All apps
   and folders, but search still finds it, and it's tucked under **▸ hidden apps** at the
   end of All apps. **Show in lists** puts it back.

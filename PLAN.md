@@ -161,7 +161,8 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Today's events under the date, and the day's list
   - [x] Commands at the prompt
   - [x] Hide apps and search words
-  - [ ] Letter strip and letter grid in All apps
+  - [x] Letter strip in All apps
+  - [ ] Letter grid in All apps
 
 ## GrapheneOS notes
 
