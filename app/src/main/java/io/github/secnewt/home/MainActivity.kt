@@ -2,7 +2,10 @@ package io.github.secnewt.home
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.database.ContentObserver
@@ -14,6 +17,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.UserManager
 import android.os.UserHandle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -45,6 +49,10 @@ import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.ProfileKind
+import io.github.secnewt.home.apps.ProfileState
+import io.github.secnewt.home.apps.ProfileView
+import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.MissedCalls
 import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Website
@@ -67,6 +75,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var store: HomeStore
 
     private var installed by mutableStateOf<List<InstalledApp>>(emptyList())
+
+    // Work profile and Private space, when Android shares them with the home app.
+    private var profiles by mutableStateOf<List<ProfileState>>(emptyList())
+    private val profileChanges = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = reload()
+    }
     private var favoriteKeys by mutableStateOf<List<String>>(emptyList())
     private var folders by mutableStateOf<List<Folder>>(emptyList())
     private var openFolder by mutableStateOf<String?>(null)
@@ -146,12 +160,33 @@ class MainActivity : ComponentActivity() {
         websites = store.websites()
         missedCalls = MissedCalls(this)
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
+        ContextCompat.registerReceiver(
+            this,
+            profileChanges,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_PROFILE_AVAILABLE)
+                addAction(Intent.ACTION_PROFILE_UNAVAILABLE)
+                addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
+                addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
+                addAction(Intent.ACTION_MANAGED_PROFILE_ADDED)
+                addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
+                addAction(Intent.ACTION_PROFILE_ADDED)
+                addAction(Intent.ACTION_PROFILE_REMOVED)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         reload()
 
         setContent {
             NewtTheme {
                 HomeRoute(
-                    apps = installed.map { withAlert(it.app) } + websites.map { it.toApp() },
+                    // Private space apps stay out of search, favorites and folders.
+                    apps = installed.filter { Profiles.searchable(it.app.profile) }.map { withAlert(it.app) } +
+                        websites.map { it.toApp() },
+                    profileViews = profiles.map { p ->
+                        ProfileView(p.kind, p.locked, installed.filter { it.user == p.user }.map { it.app })
+                    },
+                    onToggleProfileLock = ::toggleProfileLock,
                     favoriteKeys = favoriteKeys,
                     folders = folders,
                     openFolder = openFolder,
@@ -248,6 +283,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         launcherApps.unregisterCallback(packageChanges)
+        unregisterReceiver(profileChanges)
         cameras.unregisterTorchCallback(torchChanges)
         super.onDestroy()
     }
@@ -421,9 +457,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Locks or unlocks a work profile or Private space. Unlocking asks for your PIN or
+     * fingerprint; Android only lets the default home app do this.
+     */
+    private fun toggleProfileLock(kind: ProfileKind) {
+        val profile = profiles.firstOrNull { it.kind == kind } ?: return
+        try {
+            getSystemService(UserManager::class.java).requestQuietModeEnabled(!profile.locked, profile.user)
+        } catch (e: RuntimeException) {
+            say("Couldn't ${if (profile.locked) "unlock" else "lock"} ${kind.title}. Newt Home needs to be the default home app.")
+        }
+    }
+
     private fun reload() {
         lifecycleScope.launch {
-            installed = withContext(Dispatchers.IO) { AppRepository(this@MainActivity).load() }
+            val loaded = withContext(Dispatchers.IO) { AppRepository(this@MainActivity).load() }
+            installed = loaded.apps
+            profiles = loaded.profiles
         }
     }
 

@@ -34,6 +34,8 @@ import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.ProfileKind
+import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.ui.theme.NewtTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -123,6 +125,8 @@ class HomeScreenTest {
         onAgendaChoice: (Boolean) -> Unit = {},
         onSubmit: () -> Unit = {},
         hidden: List<LauncherApp> = emptyList(),
+        profiles: List<ProfileView> = emptyList(),
+        onToggleProfileLock: (ProfileKind) -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -136,6 +140,8 @@ class HomeScreenTest {
         onQueryChange = {},
         onSubmit = onSubmit,
         hiddenApps = hidden,
+        profiles = profiles,
+        onToggleProfileLock = onToggleProfileLock,
         isHidden = { it in hidden },
         onOpen = onOpen,
         onHold = {},
@@ -607,6 +613,33 @@ class HomeScreenTest {
     @Test
     fun missedCallsUnderPhoneLargeText() = render("missed_calls_200_percent", dark = false, fontScale = 2f) {
         Home(favs = favorites.map { if (it.name == "Phone") it.copy(alert = "2 missed") else it })
+    }
+
+    private val workAndPrivate = listOf(
+        ProfileView(
+            ProfileKind.WORK,
+            locked = false,
+            apps = listOf(LauncherApp("org.signal/.Main#10", "Signal", profile = ProfileKind.WORK)),
+        ),
+        ProfileView(ProfileKind.PRIVATE, locked = true, apps = emptyList()),
+    )
+
+    @Test
+    fun allAppsWithProfiles() = render(
+        "all_apps_profiles",
+        dark = true,
+        before = { scrollAllAppsTo("Unlock") },
+    ) { Home(screen = Screen.APPS, profiles = workAndPrivate) }
+
+    @Test
+    fun unlockingAPrivateSpaceAsks() {
+        var toggled: ProfileKind? = null
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, profiles = workAndPrivate, onToggleProfileLock = { toggled = it }) }
+        }
+        scrollAllAppsTo("Unlock")
+        composeRule.onNodeWithText("Unlock").performClick()
+        assertEquals(ProfileKind.PRIVATE, toggled)
     }
 
     @Test

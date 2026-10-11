@@ -15,6 +15,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Popup
 import io.github.secnewt.home.apps.Letters
+import io.github.secnewt.home.apps.ProfileKind
+import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.Websites
 import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
@@ -219,6 +221,8 @@ fun HomeScreen(
     hiddenApps: List<LauncherApp> = emptyList(),
     isHidden: (LauncherApp) -> Boolean = { false },
     onAddWebsite: () -> Unit = {},
+    profiles: List<ProfileView> = emptyList(),
+    onToggleProfileLock: (ProfileKind) -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -263,7 +267,7 @@ fun HomeScreen(
                     enter = slideInVertically { it } + fadeIn(),
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
-                    AppsPage(allApps, hiddenApps, onOpen, onHold, onAddWebsite) { onScreen(Screen.HOME) }
+                    AppsPage(allApps, hiddenApps, profiles, onOpen, onHold, onAddWebsite, onToggleProfileLock) { onScreen(Screen.HOME) }
                 }
             }
         }
@@ -415,9 +419,11 @@ private fun FoldersPage(
 private fun AppsPage(
     allApps: List<LauncherApp>,
     hiddenApps: List<LauncherApp>,
+    profiles: List<ProfileView>,
     onOpen: (LauncherApp) -> Unit,
     onHold: (LauncherApp) -> Unit,
     onAddWebsite: () -> Unit,
+    onToggleProfileLock: (ProfileKind) -> Unit,
     onHome: () -> Unit,
 ) {
     val pullDown = rememberEdgePull(up = false, onPull = onHome)
@@ -487,6 +493,15 @@ private fun AppsPage(
                             items(hiddenApps, key = { "hidden:" + it.key }) {
                                 AppRow(it, onOpen = onOpen, onHold = onHold, note = "hidden")
                             }
+                        }
+                    }
+                    // Work profile and Private space, each in its own section at the end.
+                    for (profile in profiles) {
+                        item(key = "profile:${profile.kind}") {
+                            ProfileHeader(profile) { onToggleProfileLock(profile.kind) }
+                        }
+                        if (!profile.locked) {
+                            items(profile.apps, key = { "profile:" + it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
                         }
                     }
                 }
@@ -644,6 +659,41 @@ private fun LetterStrip(letters: List<String>, onLetter: (Int) -> Unit) {
                 )
             }
         }
+    }
+}
+
+/**
+ * "Work" or "Private space", with a lock button. A locked Private space hides its apps;
+ * unlocking asks for your PIN or fingerprint (Android does that part).
+ */
+@Composable
+private fun ProfileHeader(profile: ProfileView, onToggleLock: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "~/" + profile.kind.title.lowercase().replace(' ', '-') + "/",
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp)
+                .semantics {
+                    heading()
+                    contentDescription = profile.kind.title + if (profile.locked) ", locked" else ""
+                },
+        )
+        TextButton(onClick = onToggleLock, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(if (profile.locked) "Unlock" else "Lock", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        }
+    }
+    if (profile.locked) {
+        Hint("# locked · its apps are hidden until you unlock it", top = 2.dp)
     }
 }
 
@@ -997,7 +1047,9 @@ private fun AppRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             // A shortcut says where it came from, like "Vanadium shortcut", so it's not mistaken for an app.
-            val source = app.url?.let { "website · " + (Websites.host(it) ?: it) } ?: app.from?.let { "$it shortcut" }
+            val source = app.url?.let { "website · " + (Websites.host(it) ?: it) }
+                ?: app.from?.let { "$it shortcut" }
+                ?: app.profile.takeIf { it != ProfileKind.MAIN }?.title?.lowercase()
             val line = listOfNotNull(source, note).joinToString(" · ").ifEmpty { null }
             val alert = app.alert
             if (alert != null) {

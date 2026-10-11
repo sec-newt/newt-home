@@ -170,6 +170,10 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] App shortcuts on the press-and-hold menu ("Jump to")
   - [x] Newt Phone missed-call count ("2 missed" under Phone)
 
+- [ ] Phase 3
+  - [x] Work profile and Private space sections in All apps, with lock and unlock
+  - [ ] Gesture compass (open question: does it earn its place?)
+
 ## GrapheneOS notes
 
 - **Making it the home app:** Settings → Apps → Default apps → Home app. Keep the stock launcher installed as a fallback.

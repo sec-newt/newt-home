@@ -9,7 +9,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Process
+import android.os.UserManager
 import android.os.UserHandle
 import androidx.compose.ui.graphics.asImageBitmap
 
@@ -24,31 +26,82 @@ class InstalledApp(
     val shortcut: ShortcutInfo? = null,
 )
 
+/** A work profile or Private space the home app can see, and whether it's locked. */
+class ProfileState(val user: UserHandle, val kind: ProfileKind, val locked: Boolean)
+
+/** Everything the home screen lists: apps (and shortcuts) from every profile, and the profiles. */
+class Loaded(val apps: List<InstalledApp>, val profiles: List<ProfileState>)
+
 /**
- * Lists the apps that can be opened from a home screen. Android gives this list to launchers
- * directly, so no permission is needed. Work profile and Private Space apps come later.
+ * Lists the apps that can be opened from a home screen, in your own profile and in any work
+ * profile or Private space Android shares with the home app. Android gives these lists to
+ * launchers directly, so no permission is needed (Private space needs Newt Home to be the
+ * default home app).
  */
 class AppRepository(private val context: Context) {
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
+    private val users = context.getSystemService(UserManager::class.java)
 
-    fun load(): List<InstalledApp> {
-        val apps = loadApps()
-        return apps + loadShortcuts(apps)
+    fun load(): Loaded {
+        val me = Process.myUserHandle()
+        val profiles = try {
+            launcherApps.profiles
+        } catch (e: RuntimeException) {
+            listOf(me)
+        }
+        val apps = loadApps(me, ProfileKind.MAIN)
+        val others = profiles.filter { it != me }.map { user ->
+            val kind = kindOf(user)
+            val locked = try {
+                users.isQuietModeEnabled(user)
+            } catch (e: RuntimeException) {
+                false
+            }
+            ProfileState(user, kind, locked) to if (locked) emptyList() else loadApps(user, kind)
+        }
+        return Loaded(apps + loadShortcuts(apps) + others.flatMap { it.second }, others.map { it.first })
     }
 
-    private fun loadApps(): List<InstalledApp> {
-        val user = Process.myUserHandle()
-        return launcherApps.getActivityList(null, user)
-            .filter { it.applicationInfo.packageName != context.packageName }
+    /** Work profile, Private space or something else; Android 15 says which, older ones only have work profiles. */
+    private fun kindOf(user: UserHandle): ProfileKind {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            val type = try {
+                launcherApps.getLauncherUserInfo(user)?.userType
+            } catch (e: RuntimeException) {
+                null
+            }
+            return when (type) {
+                // Android's own names for these profile types.
+                "android.os.usertype.profile.MANAGED" -> ProfileKind.WORK
+                "android.os.usertype.profile.PRIVATE" -> ProfileKind.PRIVATE
+                null -> ProfileKind.WORK
+                else -> ProfileKind.OTHER
+            }
+        }
+        return ProfileKind.WORK
+    }
+
+    private fun loadApps(user: UserHandle, kind: ProfileKind): List<InstalledApp> {
+        val main = kind == ProfileKind.MAIN
+        val serial = if (main) 0L else users.getSerialNumberForUser(user)
+        val list = try {
+            launcherApps.getActivityList(null, user)
+        } catch (e: RuntimeException) {
+            // The profile was removed or locked a moment ago.
+            return emptyList()
+        }
+        return list
+            .filter { !main || it.applicationInfo.packageName != context.packageName }
             .map { info ->
                 val component = info.componentName
                 val mono = (info.getIcon(0) as? AdaptiveIconDrawable)?.monochrome
                 InstalledApp(
                     app = LauncherApp(
-                        key = component.flattenToString(),
+                        key = Profiles.key(component.flattenToString(), serial, main),
                         name = info.label.toString().ifBlank { component.packageName },
                         icon = mono?.let { safeZone(it).asImageBitmap() },
+                        profile = kind,
                     ),
                     component = component,
                     user = user,

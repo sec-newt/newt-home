@@ -76,6 +76,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   **Jump to**: things like Signal's "New message" or a recent chat. Tap one to go straight
   there. (Android shares these only with the default home app.)
 
+- **Work profile and Private space.** Their apps get their own sections at the end of All
+  apps (`~/work/`, `~/private-space/`), each with **Lock** / **Unlock**. Work apps also
+  show up in search, marked "work". Private space apps only ever show in their own
+  section, and only while it's unlocked; unlocking asks for your PIN or fingerprint.
 - **Missed calls.** With Newt Phone installed, "2 missed" shows in red under Phone.
   Newt Phone shares only that number, and only with apps signed with the Newt key, so
   Newt Home never sees your call history.
