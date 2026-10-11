@@ -1,6 +1,10 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -416,6 +420,13 @@ private fun AppsPage(
     val groups = remember(allApps) { Letters.groups(allApps, { it.name }, offset = 1) }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // The letter grid, and the one letter picked from it (only its apps are listed then).
+    var gridOpen by remember { mutableStateOf(false) }
+    var only by remember { mutableStateOf<String?>(null) }
+    val onlyGroup = groups.firstOrNull { it.letter == only }
+    BackHandler(enabled = gridOpen || only != null) {
+        if (gridOpen) gridOpen = false else only = null
+    }
     Box(
         Modifier
             .fillMaxSize()
@@ -423,7 +434,28 @@ private fun AppsPage(
     ) {
         GadgetBackground()
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.weight(1f)) {
+            if (gridOpen) {
+                LetterGrid(
+                    groups.map { it.letter to it.items.size },
+                    modifier = Modifier.weight(1f),
+                    onPick = { letter ->
+                        only = letter
+                        gridOpen = false
+                    },
+                )
+            } else if (onlyGroup != null) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .nestedScroll(pullDown),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    item { PromptLine("ls ${onlyGroup.letter.lowercase()}*") }
+                    item { LetterHeader(onlyGroup.letter) { gridOpen = true } }
+                    items(onlyGroup.items, key = { it.key }) { app -> AppRow(app, onOpen = onOpen, onHold = onHold) }
+                }
+            } else Row(Modifier.weight(1f)) {
                 LazyColumn(
                     state = list,
                     modifier = Modifier
@@ -434,7 +466,7 @@ private fun AppsPage(
                 ) {
                     item { PromptLine("ls") }
                     for (group in groups) {
-                        item(key = "letter:${group.letter}") { LetterHeader(group.letter) }
+                        item(key = "letter:${group.letter}") { LetterHeader(group.letter) { gridOpen = true } }
                         items(group.items, key = { it.key }) { app -> AppRow(app, onOpen = onOpen, onHold = onHold) }
                     }
                     if (hiddenApps.isNotEmpty()) {
@@ -453,7 +485,68 @@ private fun AppsPage(
                     LetterStrip(groups.map { it.letter }) { i -> scope.launch { list.scrollToItem(groups[i].index) } }
                 }
             }
-            NavRow { NavButton("↓ Home", "Home", Modifier.weight(1f), onHome) }
+            NavRow {
+                NavButton("↓ Home", "Home", Modifier.weight(1f), onHome)
+                when {
+                    gridOpen -> NavButton("All A–Z", "Back to all apps", Modifier.weight(1f)) { gridOpen = false }
+                    only != null -> NavButton("All A–Z", "Show all apps", Modifier.weight(1f)) { only = null }
+                    groups.size > 1 -> NavButton("Letters", "Letter grid", Modifier.weight(1f)) { gridOpen = true }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Every letter that has apps, as big buttons: tap S and only the S apps are listed, so
+ * there's nothing to scroll through. Opened from the Letters button or any letter header.
+ */
+@Composable
+private fun LetterGrid(letters: List<Pair<String, Int>>, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
+    Column(modifier.fillMaxWidth()) {
+        PromptLine("ls -d [a-z]")
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 76.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            gridItems(letters, key = { it.first }) { (letter, count) ->
+                val shape = RoundedCornerShape(14.dp)
+                val interactions = remember { MutableInteractionSource() }
+                Column(
+                    Modifier
+                        .heightIn(min = 76.dp)
+                        .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                        .clickable(interactionSource = interactions, indication = LocalIndication.current) { onPick(letter) }
+                        .padding(vertical = 6.dp)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "$letter, " + if (count == 1) "1 app" else "$count apps"
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        letter,
+                        fontFamily = NewtFonts.Mono,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 34.sp,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.clearAndSetSemantics { },
+                    )
+                    Text(
+                        "$count",
+                        fontFamily = NewtFonts.Mono,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clearAndSetSemantics { },
+                    )
+                }
+            }
         }
     }
 }
@@ -571,17 +664,26 @@ private fun HiddenToggle(count: Int, open: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun LetterHeader(letter: String) {
-    Text(
-        letter,
-        fontFamily = NewtFonts.Mono,
-        fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
-        color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier
-            .padding(start = 4.dp, top = 12.dp, bottom = 2.dp)
+private fun LetterHeader(letter: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .padding(top = 6.dp)
+            .heightIn(min = 48.dp)
+            .widthIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = "Letter grid", onClick = onClick)
+            .padding(horizontal = 4.dp)
             .semantics { heading() },
-    )
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            letter,
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+    }
 }
 
 @Composable
