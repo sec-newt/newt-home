@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
     private var folders by mutableStateOf<List<Folder>>(emptyList())
     private var openFolder by mutableStateOf<String?>(null)
     private var uses by mutableStateOf<Map<String, Int>>(emptyMap())
+    private var hidden by mutableStateOf<Set<String>>(emptySet())
+    private var searchWords by mutableStateOf<Map<String, List<String>>>(emptyMap())
     private var resetSignal by mutableIntStateOf(0)
 
     // Goes up each time the home screen comes back into view, which replays the boot type-out.
@@ -120,6 +122,8 @@ class MainActivity : ComponentActivity() {
         folders = store.folders()
         openFolder = store.openFolder()
         uses = store.uses()
+        hidden = store.hidden()
+        searchWords = store.searchWords()
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         reload()
 
@@ -162,6 +166,16 @@ class MainActivity : ComponentActivity() {
                     },
                     onNewDay = ::refreshAgenda,
                     onCommand = ::runCommand,
+                    hidden = hidden,
+                    searchWords = searchWords,
+                    onHiddenChange = {
+                        hidden = it
+                        store.setHidden(it)
+                    },
+                    onSearchWordsChange = {
+                        searchWords = it
+                        store.setSearchWords(it)
+                    },
                 )
             }
         }

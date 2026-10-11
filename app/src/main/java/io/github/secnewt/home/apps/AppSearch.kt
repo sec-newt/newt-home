@@ -11,13 +11,16 @@ object AppSearch {
     /** How well a name matches, best first. */
     enum class Match(val rank: Int) {
         /** "sig" → Signal. */
-        START(4),
+        START(5),
 
         /** "mail" → Proton Mail: the start of a later word. */
-        WORD_START(3),
+        WORD_START(4),
 
         /** "gnal" → Signal. */
-        INSIDE(2),
+        INSIDE(3),
+
+        /** "bank" → your banking app, because you gave it that search word. */
+        YOUR_WORD(2),
 
         /** "mgnf" → Magnifier: the letters in order, with gaps. */
         LETTERS_IN_ORDER(1),
@@ -26,7 +29,8 @@ object AppSearch {
         IN_FOLDER(0),
     }
 
-    data class Result<T>(val item: T, val match: Match)
+    /** [word] is the search word that matched, for a [Match.YOUR_WORD] match. */
+    data class Result<T>(val item: T, val match: Match, val word: String? = null)
 
     /** Lower case, accents removed, extra spaces dropped: "Café  Ü" → "cafe u". */
     fun normalize(text: String): String =
@@ -62,8 +66,8 @@ object AppSearch {
     }
 
     /**
-     * Every app whose name matches, or whose folder's name does; best match first, then
-     * most used, then A–Z.
+     * Every app whose name matches, or one of your search words for it, or its folder's
+     * name; best match first, then most used, then A–Z.
      */
     fun <T> search(
         items: List<T>,
@@ -71,23 +75,33 @@ object AppSearch {
         name: (T) -> String,
         uses: (T) -> Int = { 0 },
         folder: (T) -> String? = { null },
-    ): List<Result<T>> =
-        items.mapNotNull { item ->
-            val m = match(name(item), query)
-                ?: folder(item)?.takeIf { folderMatches(it, query) }?.let { Match.IN_FOLDER }
-            m?.let { Result(item, it) }
+        words: (T) -> List<String> = { emptyList() },
+    ): List<Result<T>> {
+        val q = normalize(query)
+        return items.mapNotNull { item ->
+            val byName = match(name(item), query)
+            // Your own word only counts when the name doesn't already match better.
+            val word = if (q.isEmpty()) null else words(item).firstOrNull { it.startsWith(q) }
+            when {
+                byName != null && (word == null || byName.rank > Match.YOUR_WORD.rank) -> Result(item, byName)
+                word != null -> Result(item, Match.YOUR_WORD, word)
+                folder(item)?.let { folderMatches(it, query) } == true -> Result(item, Match.IN_FOLDER)
+                else -> null
+            }
         }
             .sortedWith(
                 compareByDescending<Result<T>> { it.match.rank }
                     .thenByDescending { uses(it.item) }
                     .thenBy { normalize(name(it.item)) },
             )
+    }
 
     /**
      * The app to open without pressing Enter: when the query is at least 2 letters and
      * exactly one app has them together in its name ("sig" → Signal). Names that only have
      * the letters scattered through them ("Settings" has s…i…g), or that only match by
-     * folder, are too loose to count, either to open an app or to stop one opening.
+     * folder or by your search words, are too loose to count, either to open an app or to
+     * stop one opening.
      */
     fun <T> onlyMatch(results: List<Result<T>>, query: String): T? {
         if (normalize(query).length < 2) return null

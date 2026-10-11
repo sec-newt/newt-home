@@ -71,6 +71,22 @@ class AppSearchTest {
         // A folder match alone never opens an app by itself.
         assertNull(AppSearch.onlyMatch(find("games"), "games"))
     }
+
+    @Test
+    fun `finds apps by your own search words`() {
+        val words = mapOf("Proton Mail" to listOf("email", "work"), "Signal" to listOf("chat"))
+        fun find(q: String) = AppSearch.search(apps, q, name = { it }, words = { words[it].orEmpty() })
+        assertEquals(listOf("Proton Mail"), find("EMA").map { it.item })
+        assertEquals(Match.YOUR_WORD, find("work").single().match)
+        assertEquals("work", find("work").single().word)
+        // A name match still comes first; your word ranks above scattered letters.
+        val ranked = mapOf("Signal" to listOf("messenger"), "Sudoku" to listOf("mgnfpuzzle"))
+        fun rank(q: String) = AppSearch.search(apps, q, name = { it }, words = { ranked[it].orEmpty() }).map { it.item }
+        assertEquals(listOf("Messages", "Signal"), rank("mes"))
+        assertEquals(listOf("Sudoku", "Magnifier"), rank("mgnf"))
+        // Your word alone never opens an app by itself.
+        assertNull(AppSearch.onlyMatch(find("chat"), "chat"))
+    }
 }
 
 class FavoritesTest {

@@ -139,7 +139,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 
 - No internet permission, enforced by the permission allowlist check in CI. The permissions are "view network connections" for the status line and read-only calendar access for today's events (asked for only after saying yes), and "set an alarm" for the timer and alarm commands.
 - No `QUERY_ALL_PACKAGES`. The app list comes from `LauncherApps` plus a narrow "launchable apps" query.
-- Usage counts, folders, search words and settings stay in the app's private storage and are excluded from backups.
+- Usage counts, folders, hidden apps, search words and settings stay in the app's private storage and are excluded from backups.
 - No notification access unless a later feature truly needs it, then off by default and explained.
 - No Google Play Services, Firebase, analytics or ads.
 
@@ -160,7 +160,8 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Three screens: home, folders (swipe right), all apps (swipe up)
   - [x] Today's events under the date, and the day's list
   - [x] Commands at the prompt
-  - [ ] Hide apps, search words, letter strip and letter grid in All apps
+  - [x] Hide apps and search words
+  - [ ] Letter strip and letter grid in All apps
 
 ## GrapheneOS notes
 

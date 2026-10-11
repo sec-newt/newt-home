@@ -31,6 +31,12 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   Press and hold a folder to rename, move or delete it; deleting a folder never
   removes its apps. It starts with AI, Blind tools, Games and Productivity.
 - **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt.
+- **Hide apps.** Press and hold an app and choose **Hide from lists**. It leaves All apps
+  and folders, but search still finds it, and it's tucked under **▸ hidden apps** at the
+  end of All apps. **Show in lists** puts it back.
+- **Search words.** Press and hold an app and choose **Add search words**, like `bank` or
+  `email`, so typing one finds it even when you can't remember its name. Results say
+  "your word: bank" so you know why it showed up.
 - **The prompt.** Type part of an app's name, or a folder's name; capitals don't matter. When only one
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
@@ -63,8 +69,8 @@ Websites as apps and app shortcuts are next (see the plan).
   change the alarms you have. The flashlight needs no permission. The build fails if any
   other permission is ever added (see `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
-- Favorites, folders and how often you open each app stay on the phone, in the app's private
-  storage, and are excluded from backups.
+- Favorites, folders, hidden apps, search words and how often you open each app stay on
+  the phone, in the app's private storage, and are excluded from backups.
 - No Google Play Services, Firebase, analytics or ads.
 
 ## Install

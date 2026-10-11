@@ -40,6 +40,21 @@ class HomeStore(context: Context) {
         prefs.edit().apply { if (show == null) remove(SHOW_EVENTS) else putBoolean(SHOW_EVENTS, show) }.apply()
     }
 
+    /** Apps hidden from All apps and folders. Search still finds them. */
+    fun hidden(): Set<String> =
+        prefs.getString(HIDDEN, "").orEmpty().split('\n').filter { it.isNotEmpty() }.toSet()
+
+    fun setHidden(keys: Set<String>) {
+        prefs.edit().putString(HIDDEN, keys.joinToString("\n")).apply()
+    }
+
+    /** Your own search words for apps, by app key. */
+    fun searchWords(): Map<String, List<String>> = SearchWords.decode(prefs.getString(SEARCH_WORDS, "").orEmpty())
+
+    fun setSearchWords(words: Map<String, List<String>>) {
+        prefs.edit().putString(SEARCH_WORDS, SearchWords.encode(words)).apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -54,6 +69,8 @@ class HomeStore(context: Context) {
         const val FOLDERS = "folders"
         const val OPEN_FOLDER = "open_folder"
         const val SHOW_EVENTS = "show_events"
+        const val HIDDEN = "hidden"
+        const val SEARCH_WORDS = "search_words"
         const val USES = "uses:"
     }
 }

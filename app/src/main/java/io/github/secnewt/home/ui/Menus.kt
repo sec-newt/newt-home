@@ -57,6 +57,7 @@ import io.github.secnewt.home.apps.CommandHelp
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.SearchWords
 import io.github.secnewt.home.ui.theme.NewtFonts
 
 /**
@@ -132,7 +133,7 @@ private fun SheetButton(text: String, onClick: () -> Unit) {
     }
 }
 
-private enum class AppMenuPage { MAIN, PICK_FOLDER, NEW_FOLDER }
+private enum class AppMenuPage { MAIN, PICK_FOLDER, NEW_FOLDER, WORDS }
 
 /**
  * The press-and-hold menu for an app: every choice is a word with one plain line saying
@@ -152,6 +153,10 @@ fun HoldMenu(
     onMoveToNewFolder: (String) -> Unit,
     onAppInfo: () -> Unit,
     onDismiss: () -> Unit,
+    isHidden: Boolean = false,
+    words: List<String> = emptyList(),
+    onToggleHidden: () -> Unit = {},
+    onSetWords: (List<String>) -> Unit = {},
 ) {
     var page by rememberSaveable { mutableStateOf(AppMenuPage.MAIN) }
     MenuSheet(
@@ -176,9 +181,25 @@ fun HoldMenu(
                     if (currentFolder != null) "Now in $currentFolder/" else "Not in a folder yet",
                     { page = AppMenuPage.PICK_FOLDER },
                 )
+                MenuOption(
+                    if (words.isEmpty()) "Add search words" else "Search words",
+                    if (words.isEmpty()) "Your own words that find it, like bank or maps" else words.joinToString(", "),
+                    { page = AppMenuPage.WORDS },
+                )
+                if (isHidden) {
+                    MenuOption("Show in lists", "Back in All apps and its folder", onToggleHidden)
+                } else {
+                    MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden)
+                }
                 MenuOption("App info", "Android's page for this app", onAppInfo)
                 SheetButton("Cancel", onDismiss)
             }
+            AppMenuPage.WORDS -> WordsField(
+                appName = app.name,
+                initial = words,
+                onSave = onSetWords,
+                onBack = { page = AppMenuPage.MAIN },
+            )
             AppMenuPage.PICK_FOLDER -> {
                 for (name in folderNames) {
                     MenuOption("$name/", if (name == currentFolder) "It's here now" else "Move it here", { onMoveToFolder(name) })
@@ -367,6 +388,68 @@ private fun NameField(
     }
     SheetButton(saveLabel, ::save)
     SheetButton(backLabel, onBack)
+}
+
+/**
+ * The words that find an app at the prompt, typed as one line ("bank, money"). Save with
+ * nothing typed removes them all.
+ */
+@Composable
+private fun WordsField(appName: String, initial: List<String>, onSave: (List<String>) -> Unit, onBack: () -> Unit) {
+    var text by rememberSaveable { mutableStateOf(initial.joinToString(", ")) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    val label = "Words that find $appName"
+    Text(
+        label,
+        fontWeight = FontWeight.Bold,
+        fontSize = 17.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .clearAndSetSemantics { },
+    )
+    val shape = RoundedCornerShape(14.dp)
+    BasicTextField(
+        value = text,
+        onValueChange = { text = it },
+        singleLine = true,
+        textStyle = TextStyle(
+            fontFamily = NewtFonts.Mono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { onSave(SearchWords.parse(text)) }),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .focusRequester(focus)
+            .semantics { contentDescription = label },
+        decorationBox = { field ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .border(neonOutline(), shape)
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) { field() }
+        },
+    )
+    Text(
+        "Separate words with commas or spaces. Capitals don't matter.",
+        fontSize = 15.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+    )
+    val parsed = SearchWords.parse(text)
+    SheetButton(if (parsed.isEmpty() && initial.isNotEmpty()) "Remove all words" else "Save words") { onSave(parsed) }
+    SheetButton("Back", onBack)
 }
 
 @Composable
