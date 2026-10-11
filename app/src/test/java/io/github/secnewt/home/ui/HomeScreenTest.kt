@@ -4,6 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
+import com.google.android.apps.common.testing.accessibility.framework.AccessibilityViewCheckResult
+import com.google.android.apps.common.testing.accessibility.framework.checks.TextContrastCheck
+import org.hamcrest.Description
+import org.hamcrest.TypeSafeMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -75,9 +82,29 @@ class HomeScreenTest {
         composeRule.onRoot().captureRoboImage("build/screenshots/$name.png")
         composeRule.onRoot().checkRoboAccessibility(
             RoborazziATFAccessibilityCheckOptions(
+                checker = RoborazziATFAccessibilityChecker(suppressions = clippedAtScrollEdge),
                 failureLevel = RoborazziATFAccessibilityChecker.CheckLevel.Warning,
             )
         )
+    }
+
+    /**
+     * A row cut off by the bottom of a scrolling list shows only a sliver of its text, and the
+     * contrast check measures that sliver. ATF marks these itself ("may be only partially
+     * visible within a scrollable container"); every fully shown row is still checked.
+     */
+    private val clippedAtScrollEdge = object : TypeSafeMatcher<AccessibilityViewCheckResult>() {
+        override fun matchesSafely(result: AccessibilityViewCheckResult): Boolean =
+            result.sourceCheckClass == TextContrastCheck::class.java &&
+                result.message.toString().contains("partially visible within a scrollable container")
+
+        override fun describeTo(description: Description) {
+            description.appendText("text contrast measured on a row clipped at a scroll edge")
+        }
+    }
+
+    private fun scrollAllAppsTo(text: String) {
+        composeRule.onNodeWithTag(ALL_APPS_LIST).performScrollToNode(hasText(text))
     }
 
     @Composable
@@ -419,7 +446,10 @@ class HomeScreenTest {
     fun allAppsWithHiddenApps() = render(
         "all_apps_hidden_open",
         dark = true,
-        before = { composeRule.onNodeWithText("▸ 2 hidden apps").performClick() },
+        before = {
+            scrollAllAppsTo("▸ 2 hidden apps")
+            composeRule.onNodeWithText("▸ 2 hidden apps").performClick()
+        },
     ) {
         Home(screen = Screen.APPS, hidden = listOf(app("Sudoku"), app("Settings")))
     }
@@ -485,6 +515,7 @@ class HomeScreenTest {
     @Test
     fun shortcutsSayWhereTheyCameFrom() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        scrollAllAppsTo("Vanadium shortcut")
         composeRule.onNodeWithText("Vanadium shortcut").assertIsDisplayed()
     }
 

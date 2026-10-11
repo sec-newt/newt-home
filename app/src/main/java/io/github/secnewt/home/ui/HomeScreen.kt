@@ -1,6 +1,7 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.testTag
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -137,6 +138,9 @@ sealed interface HomeView {
  */
 @Immutable
 data class CommandView(val text: String, val ready: Boolean)
+
+/** The All apps list, for tests. */
+internal const val ALL_APPS_LIST = "all-apps"
 
 /** How far past the end of a list a drag has to go to switch screens. */
 private val EDGE_PULL = 96.dp
@@ -462,6 +466,7 @@ private fun AppsPage(
                 LazyColumn(
                     state = list,
                     modifier = Modifier
+                        .testTag(ALL_APPS_LIST)
                         .weight(1f)
                         .fillMaxHeight()
                         .nestedScroll(pullDown),
