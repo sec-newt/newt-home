@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Three small permissions, and no internet access: a launcher gets the list of apps from Android
+    <!-- A few small permissions, and no internet access: a launcher gets the list of apps from Android
          itself. config/allowed-permissions.txt keeps it that way. -->
 
     <!-- The status line's [wifi] / [mobile]: whether the phone is on Wi-Fi or mobile data.
@@ -17,9 +17,16 @@
          set an alarm. Granted on install; it can't read or change existing alarms. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
+    <!-- "2 missed" under Phone: how many missed calls Newt Phone says you haven't seen, and
+         nothing else. Newt Phone only grants this to apps signed with the Newt key, so no
+         call history is ever shared and nobody is asked. -->
+    <uses-permission android:name="io.github.secnewt.dialer.permission.MISSED_CALL_COUNT" />
+
     <!-- Lets the app see apps that can be opened from a home screen, and nothing else
          (instead of the much broader "see every installed app" permission). -->
     <queries>
+        <!-- Newt Phone's missed-call count (see above), and no other app's data. -->
+        <provider android:authorities="io.github.secnewt.dialer.missedcalls" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

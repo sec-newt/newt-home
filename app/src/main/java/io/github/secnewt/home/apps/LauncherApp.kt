@@ -20,6 +20,8 @@ data class LauncherApp(
     val from: String? = null,
     /** For a website added by hand, its address, opened in the browser. */
     val url: String? = null,
+    /** Something that needs attention, shown in red under the name, like "2 missed" under Phone. */
+    val alert: String? = null,
 ) {
     val isShortcut: Boolean get() = from != null || url != null
 }

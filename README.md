@@ -76,7 +76,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   **Jump to**: things like Signal's "New message" or a recent chat. Tap one to go straight
   there. (Android shares these only with the default home app.)
 
-The Newt Phone missed-call count is next (see the plan).
+- **Missed calls.** With Newt Phone installed, "2 missed" shows in red under Phone.
+  Newt Phone shares only that number, and only with apps signed with the Newt key, so
+  Newt Home never sees your call history.
 
 ## Privacy
 
@@ -85,7 +87,9 @@ The Newt Phone missed-call count is next (see the plan).
   Wi-Fi or mobile data. "Calendar" (read only) is asked for only if you choose to
   show today's events, and those events stay on the phone. "Set an alarm" lets the
   `timer` and `alarm` commands hand a new one to your clock app; it can't see or
-  change the alarms you have. The flashlight needs no permission. The build fails if any
+  change the alarms you have. "Missed call count" reads just the number of
+  missed calls from Newt Phone, which only Newt-signed apps can get. The flashlight
+  needs no permission. The build fails if any
   other permission is ever added (see `config/allowed-permissions.txt`).
 - It only sees apps that can be opened from a home screen, not everything installed.
 - Favorites, folders, hidden apps, search words and how often you open each app stay on

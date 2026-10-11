@@ -15,7 +15,9 @@ This is a one-person hobby project, so replies may take a few days.
   read-only calendar access, asked for only if you choose to show today's events
   under the date. With no internet, events can't leave the phone. "Set an alarm"
   lets the `timer` and `alarm` commands hand a new timer or alarm to the clock
-  app; it can't read or change existing ones. A
+  app; it can't read or change existing ones. "Missed call count" reads only
+  the number of unseen missed calls from Newt Phone; Newt Phone grants it only
+  to apps signed with the Newt key, and no call history is shared. A
   check in every build fails if any permission outside
   `config/allowed-permissions.txt` is added.
 - **It sees only what a home screen needs:** apps that can be opened from a

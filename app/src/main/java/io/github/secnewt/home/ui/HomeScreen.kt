@@ -999,6 +999,11 @@ private fun AppRow(
             // A shortcut says where it came from, like "Vanadium shortcut", so it's not mistaken for an app.
             val source = app.url?.let { "website · " + (Websites.host(it) ?: it) } ?: app.from?.let { "$it shortcut" }
             val line = listOfNotNull(source, note).joinToString(" · ").ifEmpty { null }
+            val alert = app.alert
+            if (alert != null) {
+                // A word, not just a red dot, so it's never color alone.
+                Text(alert, fontFamily = NewtFonts.Mono, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            }
             if (line != null) {
                 Text(line, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
