@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,7 +84,7 @@ fun WithHoldMenu(menuOpen: Boolean, menu: @Composable () -> Unit, content: @Comp
 
 /**
  * A sheet rising from the bottom over a dimmed screen, with a [header] and the menu's
- * choices. Tapping outside it, Cancel, or Back closes it.
+ * choices. Swiping it down, tapping outside it, Cancel, or Back closes it.
  */
 @Composable
 private fun MenuSheet(
@@ -88,6 +92,7 @@ private fun MenuSheet(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val swipe = rememberSwipeDismiss(onDismiss)
     Box(
         Modifier
             .fillMaxSize()
@@ -97,15 +102,28 @@ private fun MenuSheet(
     ) {
         Column(
             Modifier
+                .offset { IntOffset(0, swipe.offset.roundToInt()) }
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 // Taps on the menu itself don't close it.
                 .pointerInput(Unit) { detectTapGestures { } }
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                .nestedScroll(swipe.connection)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
+            // The grab bar: a hint that it swipes down. For the look only.
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 10.dp)
+                    .width(44.dp)
+                    .heightIn(min = 5.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant)
+                    .clearAndSetSemantics { },
+            )
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 header()
             }
