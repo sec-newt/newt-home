@@ -5,6 +5,8 @@ import androidx.compose.runtime.Immutable
 /** How the phone is connected, for the status line. */
 enum class Connection { WIFI, MOBILE, OFFLINE, UNKNOWN }
 
+enum class BatteryLevel { GOOD, GETTING_LOW, LOW, CHARGING }
+
 /** What the terminal status line shows in place of Android's status bar. */
 @Immutable
 data class DeviceStatus(
@@ -16,6 +18,16 @@ data class DeviceStatus(
     val flashlight: Boolean = false,
 ) {
     val batteryLow: Boolean get() = battery != null && battery <= LOW_BATTERY && !charging
+
+    /** How the battery bar is colored, like Android's: green, amber getting low, red low. */
+    val batteryLevel: BatteryLevel?
+        get() = when {
+            battery == null -> null
+            charging -> BatteryLevel.CHARGING
+            battery <= LOW_BATTERY -> BatteryLevel.LOW
+            battery <= GETTING_LOW -> BatteryLevel.GETTING_LOW
+            else -> BatteryLevel.GOOD
+        }
 
     /** The pieces of the line, like `[bat 54%]` and `[wifi ●]`, label first. */
     fun parts(): List<Pair<String, String>> = buildList {
@@ -58,5 +70,6 @@ data class DeviceStatus(
 
     companion object {
         const val LOW_BATTERY = 15
+        const val GETTING_LOW = 30
     }
 }

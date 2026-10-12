@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextDecoration
 import io.github.secnewt.home.apps.SystemInfoText
+import io.github.secnewt.home.apps.BatteryLevel
+import io.github.secnewt.home.apps.DeviceStatus
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -576,6 +578,7 @@ private fun MenuOption(
     onClick: () -> Unit,
     danger: Boolean = false,
     icon: ImageVector? = null,
+    marker: Int? = null,
 ) {
     // The clean look puts an icon by each choice, like the mock and Newt Phone.
     val shown = icon.takeIf { cleanLook() }
@@ -588,6 +591,11 @@ private fun MenuOption(
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (marker != null) {
+            // A calendar's own color, by its events.
+            CalendarDot(marker)
+            Spacer(Modifier.width(14.dp))
+        }
         if (shown != null) {
             Icon(
                 shown,
@@ -683,7 +691,7 @@ fun AgendaSheet(
                 append(status)
                 if (event.location.isNotEmpty()) append(" · ${event.location}")
             }
-            MenuOption(event.title, detail, onClick = { onOpenEvent(event) })
+            MenuOption(event.title, detail, onClick = { onOpenEvent(event) }, marker = event.color)
         }
         MenuOption("Open calendar", "Opens your calendar app at today", onClick = onOpenCalendar, icon = Icons.Filled.DateRange)
         MenuOption(
@@ -737,6 +745,10 @@ private fun CleanDay(events: List<DayEvent>, now: Long, time: (Long) -> String, 
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (event.color != null) {
+                CalendarDot(event.color)
+                Spacer(Modifier.width(10.dp))
+            }
             Text(
                 if (event.allDay) "All day" else time(event.begin),
                 fontFamily = NewtFonts.Mono,
@@ -1007,7 +1019,7 @@ private fun CleanSysSheet(info: SystemInfo, onDismiss: () -> Unit) {
             Modifier.padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            info.battery?.let { SysTile("Battery", it, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f)) }
+            info.battery?.let { SysTile("Battery", it, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f), battery = batteryPercent(it)) }
             SysTile("Up for", SystemInfoText.uptime(info.uptimeMillis), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
         }
         SysBar("Storage", info.storageUsed, info.storageTotal)
@@ -1028,7 +1040,7 @@ private fun CleanSysSheet(info: SystemInfo, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SysTile(label: String, value: String, color: Color, modifier: Modifier) {
+private fun SysTile(label: String, value: String, color: Color, modifier: Modifier, battery: Int? = null) {
     Column(
         modifier
             .clip(RoundedCornerShape(14.dp))
@@ -1038,8 +1050,23 @@ private fun SysTile(label: String, value: String, color: Color, modifier: Modifi
     ) {
         Text(label, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = color)
+        if (battery != null) {
+            BatteryBar(
+                battery,
+                batteryLevelOf(battery, charging = "charging" in value),
+                modifier = Modifier.padding(top = 6.dp),
+                width = 48.dp,
+                height = 24.dp,
+            )
+        }
     }
 }
+
+/** "54%" or "54% charging" to 54. */
+private fun batteryPercent(text: String): Int? = text.takeWhile { it.isDigit() }.toIntOrNull()
+
+private fun batteryLevelOf(percent: Int, charging: Boolean): BatteryLevel =
+    DeviceStatus(battery = percent, charging = charging).batteryLevel ?: BatteryLevel.GOOD
 
 /** "Storage  157G / 228G (69%)" over a bar filled to match. */
 @Composable

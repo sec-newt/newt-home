@@ -20,6 +20,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   `next: 3:00 Dentist · 2 more today` sits under the date. Tap it or the date for the
   day's list, and tap an event to open it in your calendar app. **Stop showing events**
   in that list turns it off; press and hold the date to be asked again.
+- **Color that means something.** The battery shows as a little bar, green when it's
+  fine, amber at 30% and below, red at 15% and below, with a bolt while charging; the
+  percent is always written next to it. Each event has a dot in its calendar's own color,
+  on the home screen and in the day's list.
 - **Two looks.** The terminal look (the `~$` prompt, scanlines and the ASCII newt) or the
   clean look: plain cards and words, like Newt Phone, with every feature the same. Type
   `look clean` or `look terminal` at the prompt, or use the button at the end of `help`.

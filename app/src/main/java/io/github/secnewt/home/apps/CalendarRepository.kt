@@ -36,6 +36,8 @@ class CalendarRepository(private val context: Context) {
             Instances.END,
             Instances.ALL_DAY,
             Instances.EVENT_LOCATION,
+            // The event's own color if it has one, otherwise its calendar's.
+            Instances.DISPLAY_COLOR,
         )
         val today = localDate(now, TimeZone.getDefault())
         val events = mutableListOf<DayEvent>()
@@ -57,6 +59,7 @@ class CalendarRepository(private val context: Context) {
                     end = end,
                     allDay = allDay,
                     location = c.getString(5)?.trim().orEmpty(),
+                    color = if (c.isNull(6)) null else c.getInt(6),
                 )
             }
         }

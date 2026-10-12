@@ -29,4 +29,14 @@ class DeviceStatusTest {
         assertEquals("Battery 54 percent, on Wi-Fi", DeviceStatus(54, false, Connection.WIFI).spoken())
         assertEquals("Battery 12 percent, low, offline", DeviceStatus(12, false, Connection.OFFLINE).spoken())
     }
+
+    @Test
+    fun `battery colors like Android's`() {
+        assertEquals(null, DeviceStatus().batteryLevel)
+        assertEquals(BatteryLevel.GOOD, DeviceStatus(battery = 31).batteryLevel)
+        assertEquals(BatteryLevel.GETTING_LOW, DeviceStatus(battery = 30).batteryLevel)
+        assertEquals(BatteryLevel.GETTING_LOW, DeviceStatus(battery = 16).batteryLevel)
+        assertEquals(BatteryLevel.LOW, DeviceStatus(battery = 15).batteryLevel)
+        assertEquals(BatteryLevel.CHARGING, DeviceStatus(battery = 5, charging = true).batteryLevel)
+    }
 }

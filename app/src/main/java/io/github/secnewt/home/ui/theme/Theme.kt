@@ -104,12 +104,15 @@ private val Day = lightColorScheme(
     onError = Color.White,
 )
 
-/** Terminal colors Material has no slot for: the green `~$` prompt. */
+/**
+ * Colors Material has no slot for: the green `~$` prompt (also "good", like a full battery)
+ * and amber for "getting low". Both stay at 7:1 against the background.
+ */
 @Immutable
-data class TerminalColors(val prompt: Color)
+data class TerminalColors(val prompt: Color, val warn: Color)
 
-private val NightTerminal = TerminalColors(prompt = Color(0xFF9ECE6A))
-private val DayTerminal = TerminalColors(prompt = Color(0xFF2D5A0A))
+private val NightTerminal = TerminalColors(prompt = Color(0xFF9ECE6A), warn = Color(0xFFE0AF68))
+private val DayTerminal = TerminalColors(prompt = Color(0xFF2D5A0A), warn = Color(0xFF6E4500))
 
 val LocalTerminalColors = staticCompositionLocalOf { NightTerminal }
 
