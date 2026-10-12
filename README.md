@@ -53,6 +53,12 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   - `call mom` opens Newt Phone's Contacts with "mom" searched; `call 555 0100` opens
     the dialpad with the number in. You still press call. `call` alone opens the phone app.
   - `wifi`, `bluetooth` and `files` open those.
+  - `ask what's a good buttermilk substitute` hands the question to the Claude app (or
+    lets you pick another app if Claude isn't installed). `ask` on its own opens Claude.
+    Newt Home itself sends nothing anywhere.
+  - `sys` (or `neofetch`) shows this phone's system info: Android version and build,
+    model, uptime, app count, storage, memory and battery. Tapping the status line at
+    the top does the same.
 - **Home and Back** clear the prompt and return to favorites.
 - **The gadget look:** faint scanlines and a dim ASCII newt behind everything, the
   prompt typing out `date` when you come home (skipped when animations are off),

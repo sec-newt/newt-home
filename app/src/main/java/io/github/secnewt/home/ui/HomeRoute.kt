@@ -24,6 +24,7 @@ import io.github.secnewt.home.apps.Favorites
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.Profiles
@@ -63,6 +64,7 @@ fun HomeRoute(
     onOpenAppShortcut: (LauncherApp, AppShortcut) -> Unit = { _, _ -> },
     profileViews: List<ProfileView> = emptyList(),
     onToggleProfileLock: (ProfileKind) -> Unit = {},
+    systemInfo: () -> SystemInfo? = { null },
     onClock: () -> Unit,
     onDate: () -> Unit,
     agenda: Agenda = Agenda.Off,
@@ -87,6 +89,7 @@ fun HomeRoute(
     var agendaOpen by rememberSaveable { mutableStateOf(false) }
     var helpOpen by rememberSaveable { mutableStateOf(false) }
     var addWebsite by rememberSaveable { mutableStateOf(false) }
+    var sys by remember { mutableStateOf<SystemInfo?>(null) }
 
     fun closeSheets() {
         menuFor = null
@@ -95,6 +98,7 @@ fun HomeRoute(
         agendaOpen = false
         helpOpen = false
         addWebsite = false
+        sys = null
     }
 
     fun reset() {
@@ -149,7 +153,11 @@ fun HomeRoute(
 
     fun runCommand(ready: Command) {
         reset()
-        if (ready == Command.Help) helpOpen = true else onCommand(ready)
+        when (ready) {
+            Command.Help -> helpOpen = true
+            Command.Sys -> sys = systemInfo()
+            else -> onCommand(ready)
+        }
     }
 
     // Enter: a finished command runs; otherwise the top app opens, so an app named like a
@@ -167,7 +175,7 @@ fun HomeRoute(
     }
 
     val today = agenda as? Agenda.Today
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -314,6 +322,8 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (sys != null) {
+            sys?.let { SysSheet(it, onDismiss = ::closeSheets) }
         } else if (addWebsite) {
             AddWebsiteSheet(
                 onAdd = { name, url ->
@@ -344,7 +354,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite, menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -357,6 +367,10 @@ fun HomeRoute(
             isHidden = { it.key in hidden },
             profiles = sections,
             onToggleProfileLock = onToggleProfileLock,
+            onStatusTap = {
+                closeSheets()
+                sys = systemInfo()
+            },
             onAddWebsite = {
                 closeSheets()
                 addWebsite = true
