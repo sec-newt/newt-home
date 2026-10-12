@@ -1,7 +1,14 @@
 package io.github.secnewt.home.ui
 
 import android.text.format.DateFormat
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -195,6 +202,12 @@ fun HomeRoute(
         }
     }
     val context = LocalContext.current
+    // Speaking at the prompt: the voice input app (FUTO Voice Input, or whichever the phone
+    // uses) does the listening and hands back the words, which land at the prompt as if typed.
+    val listen = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val heard = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
+        if (result.resultCode == Activity.RESULT_OK && !heard.isNullOrEmpty()) query = heard
+    }
     // Follows the phone's language, and updates if it changes.
     val locale = LocalLocale.current.platformLocale
     val clock = SimpleDateFormat(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm", locale).format(Date(now))
@@ -367,6 +380,17 @@ fun HomeRoute(
             isHidden = { it.key in hidden },
             profiles = sections,
             onToggleProfileLock = onToggleProfileLock,
+            onVoice = {
+                try {
+                    listen.launch(
+                        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say an app or a command"),
+                    )
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(context, "No voice input app found. FUTO Voice Input is one option.", Toast.LENGTH_LONG).show()
+                }
+            },
             onStatusTap = {
                 closeSheets()
                 sys = systemInfo()

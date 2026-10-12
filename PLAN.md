@@ -173,6 +173,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 - [ ] Phase 3
   - [x] Work profile and Private space sections in All apps, with lock and unlock
   - [ ] Gesture compass (open question: does it earn its place?)
+  - [x] Mic button at the prompt, using the phone's voice input app (FUTO Voice Input)
   - [x] `ask` (hands a question to the Claude app) and `sys` (system card, also on tapping the status line)
 
 ## GrapheneOS notes

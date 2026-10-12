@@ -59,6 +59,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   - `sys` (or `neofetch`) shows this phone's system info: Android version and build,
     model, uptime, app count, storage, memory and battery. Tapping the status line at
     the top does the same.
+- **Speak instead of typing.** The microphone at the right of the empty prompt opens your
+  phone's voice input app (FUTO Voice Input works, offline) and puts what you said at the
+  prompt, as if typed: an app name opens like typing it, and a command shows what it will
+  do so you can press Enter. Newt Home never uses the microphone itself.
 - **Home and Back** clear the prompt and return to favorites.
 - **The gadget look:** faint scanlines and a dim ASCII newt behind everything, the
   prompt typing out `date` when you come home (skipped when animations are off),
