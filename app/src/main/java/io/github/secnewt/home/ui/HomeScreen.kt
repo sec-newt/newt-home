@@ -1387,7 +1387,7 @@ private val MicShape: ImageVector by lazy {
 }
 
 /** Material's folder shape. */
-private val FolderShape: ImageVector by lazy {
+internal val FolderShape: ImageVector by lazy {
     ImageVector.Builder(
         name = "Folder",
         defaultWidth = 24.dp,
@@ -1404,10 +1404,18 @@ private val FolderShape: ImageVector by lazy {
 
 @Composable
 fun FolderIcon(size: Dp = 30.dp, color: Color = MaterialTheme.colorScheme.primary) {
+    // Terminal: outlined like the app icons. Clean: a soft filled tile.
+    val tile = if (cleanLook()) {
+        Modifier
+            .clip(RoundedCornerShape(size * 0.3f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    } else {
+        Modifier.border(1.5.dp, color, RoundedCornerShape(8.dp))
+    }
     Box(
         Modifier
             .size(size)
-            .border(1.5.dp, color, RoundedCornerShape(8.dp)),
+            .then(tile),
         contentAlignment = Alignment.Center,
     ) {
         Icon(FolderShape, contentDescription = null, tint = color, modifier = Modifier.size(size * 0.6f))

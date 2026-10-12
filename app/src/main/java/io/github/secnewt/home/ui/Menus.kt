@@ -28,6 +28,27 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
+import io.github.secnewt.home.apps.SystemInfoText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -145,6 +166,24 @@ private fun SheetTitle(text: String) {
 
 @Composable
 private fun SheetButton(text: String, onClick: () -> Unit) {
+    if (cleanLook()) {
+        // A solid button, like Newt Phone's Cancel and Close.
+        val shape = RoundedCornerShape(14.dp)
+        Box(
+            Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                .clickable(role = Role.Button, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = MaterialTheme.colorScheme.onSurface)
+        }
+        return
+    }
     TextButton(
         onClick = onClick,
         modifier = Modifier
@@ -198,51 +237,58 @@ fun HoldMenu(
                 // The app's own shortcuts first: they're what you'd hold an app to reach.
                 if (shortcuts.isNotEmpty()) {
                     MenuHeading("Jump to")
-                    for (shortcut in shortcuts) {
-                        MenuOption(
-                            shortcut.label,
-                            shortcut.description ?: "In ${app.name}",
-                            { onOpenShortcut(shortcut) },
-                        )
+                    if (cleanLook()) {
+                        ShortcutChips(shortcuts, app.name, onOpenShortcut)
+                    } else {
+                        for (shortcut in shortcuts) {
+                            MenuOption(
+                                shortcut.label,
+                                shortcut.description ?: "In ${app.name}",
+                                { onOpenShortcut(shortcut) },
+                            )
+                        }
                     }
                     MenuHeading("Options")
                 }
                 if (isFavorite) {
-                    MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite)
-                    if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) })
-                    if (canMoveDown) MenuOption("Move down", "Lower in your favorites", { onMove(1) })
+                    MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite, icon = Icons.Filled.Star)
+                    if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) }, icon = Icons.Filled.KeyboardArrowUp)
+                    if (canMoveDown) MenuOption("Move down", "Lower in your favorites", { onMove(1) }, icon = Icons.Filled.KeyboardArrowDown)
                 } else {
-                    MenuOption("Add to favorites", "Puts it on your home screen", onToggleFavorite)
+                    MenuOption("Add to favorites", "Puts it on your home screen", onToggleFavorite, icon = Icons.Filled.Star)
                 }
                 MenuOption(
                     "Move to folder",
-                    if (currentFolder != null) "Now in $currentFolder/" else "Not in a folder yet",
+                    if (currentFolder != null) "Now in ${folderLabel(currentFolder)}" else "Not in a folder yet",
                     { page = AppMenuPage.PICK_FOLDER },
+                    icon = FolderShape,
                 )
                 MenuOption(
                     if (words.isEmpty()) "Add search words" else "Search words",
                     if (words.isEmpty()) "Your own words that find it, like bank or maps" else words.joinToString(", "),
                     { page = AppMenuPage.WORDS },
+                    icon = Icons.Filled.Search,
                 )
                 if (isHidden) {
-                    MenuOption("Show in lists", "Back in All apps and its folder", onToggleHidden)
+                    MenuOption("Show in lists", "Back in All apps and its folder", onToggleHidden, icon = Icons.Filled.Check)
                 } else {
-                    MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden)
+                    MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden, icon = Icons.Filled.Close)
                 }
                 val from = app.from
                 val url = app.url
                 if (url != null) {
-                    MenuOption("Remove website", "Takes it off Newt Home. Opens $url", onRemoveShortcut, danger = true)
+                    MenuOption("Remove website", "Takes it off Newt Home. Opens $url", onRemoveShortcut, danger = true, icon = Icons.Filled.Delete)
                 } else if (from != null) {
                     MenuOption(
                         "Remove shortcut",
                         "Takes it off Newt Home. You can add it again from $from",
                         onRemoveShortcut,
                         danger = true,
+                        icon = Icons.Filled.Delete,
                     )
-                    MenuOption("$from info", "Android's page for $from, which made this shortcut", onAppInfo)
+                    MenuOption("$from info", "Android's page for $from, which made this shortcut", onAppInfo, icon = Icons.Filled.Info)
                 } else {
-                    MenuOption("App info", "Android's page for this app", onAppInfo)
+                    MenuOption("App info", "Android's page for this app", onAppInfo, icon = Icons.Filled.Info)
                 }
                 SheetButton("Cancel", onDismiss)
             }
@@ -254,12 +300,17 @@ fun HoldMenu(
             )
             AppMenuPage.PICK_FOLDER -> {
                 for (name in folderNames) {
-                    MenuOption("$name/", if (name == currentFolder) "It's here now" else "Move it here", { onMoveToFolder(name) })
+                    MenuOption(
+                        folderLabel(name),
+                        if (name == currentFolder) "It's here now" else "Move it here",
+                        { onMoveToFolder(name) },
+                        icon = FolderShape,
+                    )
                 }
                 if (currentFolder != null) {
-                    MenuOption("No folder", "Take it out of $currentFolder/", { onMoveToFolder(null) })
+                    MenuOption("No folder", "Take it out of ${folderLabel(currentFolder)}", { onMoveToFolder(null) }, icon = Icons.Filled.Close)
                 }
-                MenuOption("New folder", "Make a folder and put it there", { page = AppMenuPage.NEW_FOLDER })
+                MenuOption("New folder", "Make a folder and put it there", { page = AppMenuPage.NEW_FOLDER }, icon = Icons.Filled.Add)
                 SheetButton("Back", { page = AppMenuPage.MAIN })
             }
             AppMenuPage.NEW_FOLDER -> {
@@ -297,15 +348,15 @@ fun FolderMenu(
         header = {
             FolderIcon(size = 44.dp)
             Spacer(Modifier.width(12.dp))
-            SheetTitle("$name/")
+            SheetTitle(folderLabel(name))
         },
     ) {
         when (page) {
             FolderMenuPage.MAIN -> {
-                MenuOption("Rename", "Its apps stay in it", { page = FolderMenuPage.RENAME })
-                if (canMoveUp) MenuOption("Move up", "Higher in your folders", { onMove(-1) })
-                if (canMoveDown) MenuOption("Move down", "Lower in your folders", { onMove(1) })
-                MenuOption("Delete folder", "Its apps stay in All apps", { page = FolderMenuPage.DELETE })
+                MenuOption("Rename", "Its apps stay in it", { page = FolderMenuPage.RENAME }, icon = Icons.Filled.Edit)
+                if (canMoveUp) MenuOption("Move up", "Higher in your folders", { onMove(-1) }, icon = Icons.Filled.KeyboardArrowUp)
+                if (canMoveDown) MenuOption("Move down", "Lower in your folders", { onMove(1) }, icon = Icons.Filled.KeyboardArrowDown)
+                MenuOption("Delete folder", "Its apps stay in All apps", { page = FolderMenuPage.DELETE }, icon = Icons.Filled.Delete)
                 SheetButton("Cancel", onDismiss)
             }
             FolderMenuPage.RENAME -> NameField(
@@ -323,12 +374,12 @@ fun FolderMenu(
                     else -> "Its $appCount apps stay in All apps."
                 }
                 Text(
-                    "Delete $name/? $apps",
+                    "Delete ${folderLabel(name)}? $apps",
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 )
-                MenuOption("Delete $name/", "This can't be undone", onDelete, danger = true)
+                MenuOption("Delete ${folderLabel(name)}", "This can't be undone", onDelete, danger = true, icon = Icons.Filled.Delete)
                 SheetButton("Keep it", { page = FolderMenuPage.MAIN })
             }
         }
@@ -399,7 +450,7 @@ private fun NameField(
         },
         singleLine = true,
         textStyle = TextStyle(
-            fontFamily = NewtFonts.Mono,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onSurface,
@@ -467,7 +518,7 @@ private fun WordsField(appName: String, initial: List<String>, onSave: (List<Str
         onValueChange = { text = it },
         singleLine = true,
         textStyle = TextStyle(
-            fontFamily = NewtFonts.Mono,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onSurface,
@@ -508,10 +559,10 @@ private fun WordsField(appName: String, initial: List<String>, onSave: (List<Str
 private fun MenuHeading(text: String) {
     Text(
         text,
-        fontFamily = NewtFonts.Mono,
+        fontFamily = if (cleanLook()) NewtFonts.Display else NewtFonts.Mono,
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp,
-        color = MaterialTheme.colorScheme.secondary,
+        fontSize = if (cleanLook()) 17.sp else 15.sp,
+        color = if (cleanLook()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
         modifier = Modifier
             .padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
             .semantics { heading() },
@@ -519,23 +570,75 @@ private fun MenuHeading(text: String) {
 }
 
 @Composable
-private fun MenuOption(title: String, explanation: String, onClick: () -> Unit, danger: Boolean = false) {
-    Column(
+private fun MenuOption(
+    title: String,
+    explanation: String,
+    onClick: () -> Unit,
+    danger: Boolean = false,
+    icon: ImageVector? = null,
+) {
+    // The clean look puts an icon by each choice, like the mock and Newt Phone.
+    val shown = icon.takeIf { cleanLook() }
+    Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            title,
-            fontWeight = FontWeight.Bold,
-            fontSize = 19.sp,
-            color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-        )
-        Text(explanation, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (shown != null) {
+            Icon(
+                shown,
+                contentDescription = null,
+                tint = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(26.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+        }
+        Column {
+            Text(
+                title,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (cleanLook()) 20.sp else 19.sp,
+                color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(explanation, fontSize = if (cleanLook()) 16.sp else 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** A folder's name as menus show it: `Games/` in the terminal look, `Games` in the clean one. */
+@Composable
+private fun folderLabel(name: String): String = if (cleanLook()) name else "$name/"
+
+/**
+ * The clean look's "Jump to": an app's shortcuts as round outlined buttons that wrap onto
+ * more lines as needed.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ShortcutChips(shortcuts: List<AppShortcut>, appName: String, onOpen: (AppShortcut) -> Unit) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+    ) {
+        for (shortcut in shortcuts) {
+            val shape = RoundedCornerShape(24.dp)
+            Box(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(shape)
+                    .border(neonOutline(), shape)
+                    .clickable(onClickLabel = shortcut.description ?: "Open in $appName") { onOpen(shortcut) }
+                    .padding(horizontal = 18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(shortcut.label, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
     }
 }
 
@@ -564,7 +667,9 @@ fun AgendaSheet(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
-        events.forEach { event ->
+        if (cleanLook()) {
+            CleanDay(events, now, time, onOpenEvent)
+        } else events.forEach { event ->
             val done = !event.allDay && event.end <= now
             val status = when {
                 done -> " · done"
@@ -580,13 +685,79 @@ fun AgendaSheet(
             }
             MenuOption(event.title, detail, onClick = { onOpenEvent(event) })
         }
-        MenuOption("Open calendar", "Opens your calendar app at today", onClick = onOpenCalendar)
+        MenuOption("Open calendar", "Opens your calendar app at today", onClick = onOpenCalendar, icon = Icons.Filled.DateRange)
         MenuOption(
             "Stop showing events",
             "Hides them from the home screen. Press and hold the date to bring them back.",
             onClick = onStop,
+            icon = Icons.Filled.Close,
         )
         SheetButton("Close", onDismiss)
+    }
+}
+
+/**
+ * The clean look's day: times down the left, the event happening now (or next) outlined,
+ * and finished ones crossed out with "Done" in words, so it's never color alone.
+ */
+@Composable
+private fun CleanDay(events: List<DayEvent>, now: Long, time: (Long) -> String, onOpenEvent: (DayEvent) -> Unit) {
+    val current = events.firstOrNull { AgendaText.isNow(it, now) }
+    val focus = current ?: events.firstOrNull { !it.allDay && it.begin > now }
+    for (event in events) {
+        val done = !event.allDay && event.end <= now
+        val lit = event == focus
+        val shape = RoundedCornerShape(16.dp)
+        val note = listOfNotNull(
+            when {
+                done -> "Done"
+                event == current -> "Now"
+                lit -> "Next"
+                else -> null
+            },
+            if (event.allDay) null else "until ${time(event.end)}",
+            event.location.ifEmpty { null },
+        ).joinToString(" · ")
+        Row(
+            Modifier
+                .padding(vertical = 3.dp)
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .clip(shape)
+                .then(
+                    if (lit) {
+                        Modifier
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .border(neonOutline(), shape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(onClickLabel = "Open in calendar") { onOpenEvent(event) }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (event.allDay) "All day" else time(event.begin),
+                fontFamily = NewtFonts.Mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.width(92.dp),
+            )
+            Column {
+                Text(
+                    event.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    textDecoration = if (done) TextDecoration.LineThrough else null,
+                )
+                if (note.isNotEmpty()) {
+                    Text(note, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
     }
 }
 
@@ -630,7 +801,7 @@ fun PinShortcutSheet(name: String, from: String, onAdd: () -> Unit, onCancel: ()
     MenuSheet(onDismiss = onCancel, header = { SheetTitle("Add to Newt Home?") }) {
         Text(
             name,
-            fontFamily = NewtFonts.Mono,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             color = MaterialTheme.colorScheme.onSurface,
@@ -728,7 +899,7 @@ private fun NeonField(
         onValueChange = onValueChange,
         singleLine = true,
         textStyle = TextStyle(
-            fontFamily = NewtFonts.Mono,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onSurface,
@@ -767,6 +938,10 @@ private fun NeonField(
  */
 @Composable
 fun SysSheet(info: SystemInfo, onDismiss: () -> Unit) {
+    if (cleanLook()) {
+        CleanSysSheet(info, onDismiss)
+        return
+    }
     MenuSheet(onDismiss = onDismiss, header = { SheetTitle("${info.user}@${info.device.lowercase().replace(' ', '-')}") }) {
         val label = io.github.secnewt.home.ui.theme.LocalTerminalColors.current.prompt
         for ((name, value) in info.rows()) {
@@ -812,5 +987,99 @@ fun SysSheet(info: SystemInfo, onDismiss: () -> Unit) {
             }
         }
         SheetButton("Close", onDismiss)
+    }
+}
+
+/**
+ * The clean look's system info: the phone's name, then battery and uptime as big tiles,
+ * storage and memory as bars, and the rest as plain rows.
+ */
+@Composable
+private fun CleanSysSheet(info: SystemInfo, onDismiss: () -> Unit) {
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle(info.device) }) {
+        Text(
+            "${info.android} · ${info.build}",
+            fontSize = 17.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+        )
+        Row(
+            Modifier.padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            info.battery?.let { SysTile("Battery", it, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f)) }
+            SysTile("Up for", SystemInfoText.uptime(info.uptimeMillis), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+        }
+        SysBar("Storage", info.storageUsed, info.storageTotal)
+        SysBar("Memory", info.memoryUsed, info.memoryTotal)
+        for ((name, value) in listOf("Apps" to info.apps.toString(), "Kernel" to info.kernel, "Home app" to info.launcher)) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                    .semantics(mergeDescendants = true) { },
+            ) {
+                Text(name, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text(value, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        SheetButton("Close", onDismiss)
+    }
+}
+
+@Composable
+private fun SysTile(label: String, value: String, color: Color, modifier: Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(14.dp)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Text(label, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = color)
+    }
+}
+
+/** "Storage  157G / 228G (69%)" over a bar filled to match. */
+@Composable
+private fun SysBar(label: String, used: Long, total: Long) {
+    val fraction = if (total > 0) (used.toFloat() / total).coerceIn(0f, 1f) else 0f
+    Column(
+        Modifier
+            .padding(top = 10.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(14.dp)
+            .semantics(mergeDescendants = true) { },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row {
+            Text(label, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Text(
+                SystemInfoText.usage(used, total),
+                fontFamily = NewtFonts.Mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.outlineVariant)
+                .clearAndSetSemantics { },
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction)
+                    .heightIn(min = 12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))),
+            )
+        }
     }
 }
