@@ -813,7 +813,6 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
         return
     }
     val label = LocalTerminalColors.current.prompt
-    val warn = MaterialTheme.colorScheme.error
     Text(
         buildAnnotatedString {
             parts.forEachIndexed { i, (name, value) ->
@@ -821,8 +820,10 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
                 append("[")
                 withStyle(SpanStyle(color = label, fontWeight = FontWeight.Bold)) { append(name) }
                 append(" ")
-                if (name == "bat" && status.batteryLow) {
-                    withStyle(SpanStyle(color = warn, fontWeight = FontWeight.Bold)) { append(value) }
+                val level = status.batteryLevel
+                if (name == "bat" && level != null) {
+                    // Green, amber getting low, red low, like Android's battery.
+                    withStyle(SpanStyle(color = batteryColor(level), fontWeight = FontWeight.Bold)) { append(value) }
                 } else {
                     append(value)
                 }
@@ -853,23 +854,18 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
 /** The clean look's status: "Wi-Fi · 82%" in a pill. Tap it for the system info. */
 @Composable
 private fun CleanStatus(status: DeviceStatus, onTap: () -> Unit) {
-    val words = buildList {
-        when (status.connection) {
-            Connection.WIFI -> add("Wi-Fi")
-            Connection.MOBILE -> add("Mobile data")
-            Connection.OFFLINE -> add("Offline")
-            Connection.UNKNOWN -> Unit
+    val network = when (status.connection) {
+        Connection.WIFI -> "Wi-Fi"
+        Connection.MOBILE -> "Mobile data"
+        Connection.OFFLINE -> "Offline"
+        Connection.UNKNOWN -> null
+    }
+    val battery = status.battery?.let { percent ->
+        "$percent%" + when {
+            status.charging -> " charging"
+            status.batteryLow -> " low"
+            else -> ""
         }
-        status.battery?.let { battery ->
-            add(
-                "$battery%" + when {
-                    status.charging -> " charging"
-                    status.batteryLow -> " low"
-                    else -> ""
-                },
-            )
-        }
-        if (status.flashlight) add("Flashlight on")
     }
     val shape = RoundedCornerShape(24.dp)
     Box(
@@ -890,13 +886,27 @@ private fun CleanStatus(status: DeviceStatus, onTap: () -> Unit) {
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            words.joinToString(" · "),
-            fontFamily = NewtFonts.Body,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (status.batteryLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        val text = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (network != null) {
+                Text(network, fontFamily = NewtFonts.Body, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
+            }
+            val level = status.batteryLevel
+            if (battery != null && level != null) {
+                if (network != null) Text("·", fontSize = 17.sp, color = text)
+                BatteryBar(status.battery ?: 0, level)
+                Text(
+                    battery,
+                    fontFamily = NewtFonts.Body,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (status.batteryLow) MaterialTheme.colorScheme.error else text,
+                )
+            }
+            if (status.flashlight) {
+                Text("· Flashlight on", fontFamily = NewtFonts.Body, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
+            }
+        }
     }
 }
 
@@ -1084,12 +1094,14 @@ private fun AgendaLine(
             if (cleanLook()) MaterialTheme.colorScheme.onSurface else LocalTerminalColors.current.prompt,
             null,
             onOpen,
+            // The color of the calendar the next event is in.
+            marker = AgendaText.next(AgendaText.upcoming(agenda.events, now), now)?.color,
         )
     }
 }
 
 @Composable
-private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -> Unit) {
+private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -> Unit, marker: Int? = null) {
     val clean = cleanLook()
     val card = RoundedCornerShape(16.dp)
     Box(
@@ -1114,14 +1126,22 @@ private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -
             .then(if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            text,
-            fontFamily = rowFont(),
-            fontSize = if (clean) 19.sp else 16.sp,
-            fontWeight = if (clean) FontWeight.Bold else null,
-            color = color,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = if (clean) Modifier.padding(horizontal = 12.dp, vertical = 10.dp) else Modifier,
-        )
+        ) {
+            if (marker != null) {
+                CalendarDot(marker)
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text,
+                fontFamily = rowFont(),
+                fontSize = if (clean) 19.sp else 16.sp,
+                fontWeight = if (clean) FontWeight.Bold else null,
+                color = color,
+            )
+        }
     }
 }
 

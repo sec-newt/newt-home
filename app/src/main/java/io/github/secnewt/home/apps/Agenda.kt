@@ -11,6 +11,8 @@ data class DayEvent(
     val end: Long,
     val allDay: Boolean = false,
     val location: String = "",
+    /** The color of its calendar (or of the event itself, if it has its own), as ARGB. */
+    val color: Int? = null,
 )
 
 /** What the line under the date shows. */

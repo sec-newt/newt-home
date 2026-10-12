@@ -133,6 +133,7 @@ class HomeScreenTest {
         onToggleProfileLock: (ProfileKind) -> Unit = {},
         onStatusTap: () -> Unit = {},
         onVoice: () -> Unit = {},
+        status: DeviceStatus = DeviceStatus(battery = 54, connection = Connection.WIFI),
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -161,7 +162,7 @@ class HomeScreenTest {
         screen = screen,
         onScreen = onScreen,
         folderOf = { a -> folders.firstOrNull { a in it.apps }?.name },
-        status = DeviceStatus(battery = 54, connection = Connection.WIFI),
+        status = status,
         agenda = agenda,
         now = 12 * hour,
         time = time,
@@ -171,10 +172,10 @@ class HomeScreenTest {
     private val hour = 60L * 60 * 1000
     private val time: (Long) -> String = { "${it / hour}:00" }
     private val events = listOf(
-        DayEvent(1, "Trash day", 0, 24 * hour, allDay = true),
-        DayEvent(2, "Standup", 9 * hour, 10 * hour),
-        DayEvent(3, "Dentist", 15 * hour, 16 * hour, location = "Main St clinic"),
-        DayEvent(4, "Dinner with Sam", 18 * hour, 19 * hour),
+        DayEvent(1, "Trash day", 0, 24 * hour, allDay = true, color = 0xFF33B679.toInt()),
+        DayEvent(2, "Standup", 9 * hour, 10 * hour, color = 0xFF039BE5.toInt()),
+        DayEvent(3, "Dentist", 15 * hour, 16 * hour, location = "Main St clinic", color = 0xFFE67C73.toInt()),
+        DayEvent(4, "Dinner with Sam", 18 * hour, 19 * hour, color = 0xFF8E24AA.toInt()),
     )
 
     @Composable
@@ -805,6 +806,26 @@ class HomeScreenTest {
         composeRule.setContent { NewtTheme(darkTheme = true) { Clean { SignalMenu { opened = it } } } }
         composeRule.onNodeWithText("Sam").performClick()
         assertEquals(signalShortcuts.first { it.label == "Sam" }, opened)
+    }
+
+    @Test
+    fun cleanBatteryGettingLow() = render("clean_battery_getting_low_dark", dark = true) {
+        Clean { Home(status = DeviceStatus(battery = 24, connection = Connection.MOBILE)) }
+    }
+
+    @Test
+    fun cleanBatteryLowLight() = render("clean_battery_low_light", dark = false) {
+        Clean { Home(status = DeviceStatus(battery = 9, connection = Connection.WIFI, flashlight = true)) }
+    }
+
+    @Test
+    fun cleanBatteryCharging() = render("clean_battery_charging_dark", dark = true) {
+        Clean { Home(status = DeviceStatus(battery = 71, charging = true, connection = Connection.WIFI)) }
+    }
+
+    @Test
+    fun terminalBatteryGettingLow() = render("battery_getting_low_light", dark = false) {
+        Home(status = DeviceStatus(battery = 24, connection = Connection.WIFI))
     }
 
     @Test
