@@ -56,7 +56,7 @@ object SystemInfoText {
     /** "157G / 228G (69%)", in whole gigabytes (megabytes below 1 GB). */
     fun usage(used: Long, total: Long): String {
         if (total <= 0) return "unknown"
-        val percent = (used * 100 / total).coerceIn(0, 100)
+        val percent = Math.round(used * 100.0 / total).coerceIn(0, 100)
         return "${size(used)} / ${size(total)} ($percent%)"
     }
 
