@@ -707,7 +707,8 @@ class HomeScreenTest {
                 WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = { closed = true }) }) { Home() }
             }
         }
-        composeRule.onNodeWithText("Commands").performTouchInput { swipeDown() }
+        // A real-sized drag: the title alone is too short to count as one.
+        composeRule.onNodeWithText("Commands").performTouchInput { swipeDown(startY = centerY, endY = centerY + 1200f, durationMillis = 400) }
         assertEquals(true, closed)
     }
 
