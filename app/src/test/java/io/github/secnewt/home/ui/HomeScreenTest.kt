@@ -34,6 +34,7 @@ import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.ui.theme.NewtTheme
@@ -127,6 +128,7 @@ class HomeScreenTest {
         hidden: List<LauncherApp> = emptyList(),
         profiles: List<ProfileView> = emptyList(),
         onToggleProfileLock: (ProfileKind) -> Unit = {},
+        onStatusTap: () -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -142,6 +144,7 @@ class HomeScreenTest {
         hiddenApps = hidden,
         profiles = profiles,
         onToggleProfileLock = onToggleProfileLock,
+        onStatusTap = onStatusTap,
         isHidden = { it in hidden },
         onOpen = onOpen,
         onHold = {},
@@ -640,6 +643,40 @@ class HomeScreenTest {
         scrollAllAppsTo("Unlock")
         composeRule.onNodeWithText("Unlock").performClick()
         assertEquals(ProfileKind.PRIVATE, toggled)
+    }
+
+    private val sysInfo = SystemInfo(
+        user = "newt",
+        device = "Pixel 9",
+        android = "Android 16",
+        build = "BP2A.250805.005",
+        kernel = "6.1.124",
+        uptimeMillis = ((20 * 24 + 11) * 60) * 60_000L,
+        apps = 142,
+        storageUsed = 157_000_000_000,
+        storageTotal = 228_000_000_000,
+        memoryUsed = 9_000_000_000,
+        memoryTotal = 12_000_000_000,
+        battery = "54%",
+        launcher = "Newt Home 0.1.42",
+    )
+
+    @Test
+    fun sysSheet() = render("sys_dark", dark = true) {
+        WithHoldMenu(menuOpen = true, menu = { SysSheet(sysInfo, onDismiss = {}) }) { Home() }
+    }
+
+    @Test
+    fun sysSheetLargeText() = render("sys_200_percent", dark = false, fontScale = 2f) {
+        WithHoldMenu(menuOpen = true, menu = { SysSheet(sysInfo, onDismiss = {}) }) { Home() }
+    }
+
+    @Test
+    fun tappingTheStatusLineOpensSystemInfo() {
+        var tapped = false
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(onStatusTap = { tapped = true }) } }
+        composeRule.onNodeWithContentDescription("Battery 54 percent, on Wi-Fi").performClick()
+        assertEquals(true, tapped)
     }
 
     @Test

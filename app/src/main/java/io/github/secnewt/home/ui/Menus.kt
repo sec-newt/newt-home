@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -60,6 +61,7 @@ import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.Folders
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.apps.SearchWords
+import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.Websites
 import io.github.secnewt.home.ui.theme.NewtFonts
 
@@ -725,4 +727,59 @@ private fun NeonField(
             ) { field() }
         },
     )
+}
+
+/**
+ * `sys`: this phone's system info in neofetch style, `label  value` one per line in large
+ * text, with the Newt color blocks underneath. Opened by the command or by tapping the
+ * status line.
+ */
+@Composable
+fun SysSheet(info: SystemInfo, onDismiss: () -> Unit) {
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle("${info.user}@${info.device.lowercase().replace(' ', '-')}") }) {
+        val label = io.github.secnewt.home.ui.theme.LocalTerminalColors.current.prompt
+        for ((name, value) in info.rows()) {
+            Text(
+                androidx.compose.ui.text.buildAnnotatedString {
+                    withStyle(androidx.compose.ui.text.SpanStyle(color = label, fontWeight = FontWeight.Bold)) {
+                        append(name.padEnd(8))
+                    }
+                    append(value)
+                },
+                fontFamily = NewtFonts.Mono,
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+                    .semantics { contentDescription = "$name: $value" },
+            )
+        }
+        // neofetch's color blocks, in Newt colors; for the look only.
+        Row(
+            Modifier
+                .padding(horizontal = 10.dp, vertical = 10.dp)
+                .clearAndSetSemantics { },
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            val blocks = listOf(
+                MaterialTheme.colorScheme.error,
+                label,
+                MaterialTheme.colorScheme.tertiary,
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.secondary,
+                MaterialTheme.colorScheme.onSurface,
+            )
+            for (color in blocks) {
+                Box(
+                    Modifier
+                        .width(28.dp)
+                        .heightIn(min = 14.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(color),
+                )
+            }
+        }
+        SheetButton("Close", onDismiss)
+    }
 }

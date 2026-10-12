@@ -22,6 +22,12 @@ sealed interface Command {
     data object Bluetooth : Command
     data object Files : Command
     data object Help : Command
+
+    /** A question handed to the Claude app (or another app, if Claude isn't installed). Empty opens it. */
+    data class Ask(val question: String) : Command
+
+    /** This phone's system info, like the Linux `neofetch` command. */
+    data object Sys : Command
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -54,6 +60,8 @@ object Commands {
         CommandHelp("bluetooth", "Bluetooth settings"),
         CommandHelp("files", "Opens your files app"),
         CommandHelp("ls", "Every app, A to Z"),
+        CommandHelp("ask what's a good buttermilk substitute", "Asks the Claude app. ask on its own opens it"),
+        CommandHelp("sys", "This phone's system info. Tapping the status line does the same"),
         CommandHelp("help", "This list"),
     )
 
@@ -86,11 +94,13 @@ object Commands {
             "bluetooth" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Bluetooth) else null
             "files" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Files) else null
             "help", "?" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Help) else null
+            "ask" -> CommandMatch.Ready(Command.Ask(rest))
+            "sys", "neofetch", "fastfetch" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Sys) else null
             else -> null
         }
     }
 
-    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help")
+    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch")
 
     /**
      * Whether what's typed could still become a command (`hel` on the way to `help`). The
@@ -172,5 +182,7 @@ object Commands {
         Command.Bluetooth -> "open Bluetooth settings"
         Command.Files -> "open your files app"
         Command.Help -> "list the commands"
+        is Command.Ask -> if (command.question.isEmpty()) "open the Claude app" else "ask Claude: ${command.question}"
+        Command.Sys -> "show this phone's system info"
     }
 }

@@ -73,6 +73,18 @@ class CommandsTest {
     }
 
     @Test
+    fun `ask and sys`() {
+        assertEquals(Command.Ask("What's a good buttermilk substitute"), ready("ask What's a good buttermilk substitute"))
+        assertEquals(Command.Ask(""), ready("ask"))
+        assertEquals(Command.Sys, ready("sys"))
+        assertEquals(Command.Sys, ready("neofetch"))
+        assertTrue(Commands.mightBecomeCommand("neo"))
+        val time = { h: Int, m: Int -> "$h:$m" }
+        assertEquals("open the Claude app", Commands.describe(Command.Ask(""), time))
+        assertEquals("ask Claude: why is the sky blue", Commands.describe(Command.Ask("why is the sky blue"), time))
+    }
+
+    @Test
     fun `app names are not commands`() {
         assertNull(Commands.parse("signal"))
         assertNull(Commands.parse("tim"))

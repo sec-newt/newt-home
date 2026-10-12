@@ -93,6 +93,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
@@ -223,6 +224,7 @@ fun HomeScreen(
     onAddWebsite: () -> Unit = {},
     profiles: List<ProfileView> = emptyList(),
     onToggleProfileLock: (ProfileKind) -> Unit = {},
+    onStatusTap: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -241,7 +243,7 @@ fun HomeScreen(
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         GadgetBackground()
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
-            StatusLine(status)
+            StatusLine(status, onStatusTap)
             Box(Modifier.weight(1f)) {
                 HorizontalPager(
                     state = pager,
@@ -788,7 +790,7 @@ private fun NavButton(label: String, spoken: String, modifier: Modifier = Modifi
  * home screen; swipe down from the top edge to bring it and notifications back).
  */
 @Composable
-private fun StatusLine(status: DeviceStatus) {
+private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
     val parts = status.parts()
     if (parts.isEmpty()) return
     val label = LocalTerminalColors.current.prompt
@@ -813,8 +815,19 @@ private fun StatusLine(status: DeviceStatus) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
-            .padding(start = 20.dp, end = 20.dp, top = 10.dp)
-            .clearAndSetSemantics { contentDescription = status.spoken() },
+            .padding(start = 12.dp, end = 12.dp, top = 2.dp)
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            // Tapping it opens the full system card (the same as typing `sys`).
+            .clickable(onClickLabel = "System info", onClick = onTap)
+            .padding(horizontal = 8.dp, vertical = 14.dp)
+            .clearAndSetSemantics {
+                contentDescription = status.spoken()
+                onClick(label = "System info") {
+                    onTap()
+                    true
+                }
+            },
     )
 }
 

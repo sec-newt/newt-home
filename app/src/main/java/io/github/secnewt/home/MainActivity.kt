@@ -17,6 +17,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.app.ActivityManager
+import android.os.Build
+import android.os.Environment
+import android.os.StatFs
+import android.os.SystemClock
 import android.os.UserManager
 import android.os.UserHandle
 import android.provider.AlarmClock
@@ -49,6 +54,7 @@ import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
 import io.github.secnewt.home.apps.InstalledApp
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileState
 import io.github.secnewt.home.apps.ProfileView
@@ -62,6 +68,9 @@ import io.github.secnewt.home.ui.theme.NewtTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** The Claude app, which `ask` hands questions to. */
+private const val CLAUDE_APP = "com.anthropic.claude"
 
 /** The most of an app's own shortcuts shown on its press-and-hold menu. */
 private const val MAX_APP_SHORTCUTS = 5
@@ -187,6 +196,7 @@ class MainActivity : ComponentActivity() {
                         ProfileView(p.kind, p.locked, installed.filter { it.user == p.user }.map { it.app })
                     },
                     onToggleProfileLock = ::toggleProfileLock,
+                    systemInfo = ::systemInfo,
                     favoriteKeys = favoriteKeys,
                     folders = folders,
                     openFolder = openFolder,
@@ -403,8 +413,57 @@ class MainActivity : ComponentActivity() {
                 val files = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_FILES)
                 if (!tryStart(files) && !openByName("Files")) say("No files app found")
             }
-            Command.Help -> Unit
+            is Command.Ask -> ask(command.question)
+            // Shown by the home screen itself.
+            Command.Help, Command.Sys -> Unit
         }
+    }
+
+    /**
+     * Hands a question to the Claude app, the same way sharing text to it would. If Claude
+     * isn't installed, Android's share sheet lets you pick another app. Nothing is sent
+     * anywhere by Newt Home itself.
+     */
+    private fun ask(question: String) {
+        if (question.isBlank()) {
+            if (!tryStart(packageManager.getLaunchIntentForPackage(CLAUDE_APP) ?: Intent()) && !openByName("Claude")) {
+                say("The Claude app isn't installed")
+            }
+            return
+        }
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, question)
+        if (tryStart(Intent(send).setPackage(CLAUDE_APP))) return
+        if (!tryStart(Intent.createChooser(send, "Ask with"))) say("No app found to ask")
+    }
+
+    /** What `sys` and a tap on the status line show. Nothing here needs a permission. */
+    private fun systemInfo(): SystemInfo {
+        val storage = try {
+            StatFs(Environment.getDataDirectory().path).let { it.totalBytes to it.availableBytes }
+        } catch (e: RuntimeException) {
+            0L to 0L
+        }
+        val memory = ActivityManager.MemoryInfo().also { getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
+        val version = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (e: Exception) {
+            null
+        }
+        return SystemInfo(
+            user = "newt",
+            device = Build.MODEL,
+            android = "Android ${Build.VERSION.RELEASE}",
+            build = Build.DISPLAY,
+            kernel = System.getProperty("os.version").orEmpty().substringBefore('-').ifEmpty { "unknown" },
+            uptimeMillis = SystemClock.elapsedRealtime(),
+            apps = installed.count { it.shortcut == null },
+            storageUsed = storage.first - storage.second,
+            storageTotal = storage.first,
+            memoryUsed = memory.totalMem - memory.availMem,
+            memoryTotal = memory.totalMem,
+            battery = status.battery?.let { "$it%" + if (status.charging) " charging" else "" },
+            launcher = "Newt Home" + (version?.let { " $it" } ?: ""),
+        )
     }
 
     /**
