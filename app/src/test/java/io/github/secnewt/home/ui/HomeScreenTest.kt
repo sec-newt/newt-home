@@ -129,6 +129,7 @@ class HomeScreenTest {
         profiles: List<ProfileView> = emptyList(),
         onToggleProfileLock: (ProfileKind) -> Unit = {},
         onStatusTap: () -> Unit = {},
+        onVoice: () -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -145,6 +146,7 @@ class HomeScreenTest {
         profiles = profiles,
         onToggleProfileLock = onToggleProfileLock,
         onStatusTap = onStatusTap,
+        onVoice = onVoice,
         isHidden = { it in hidden },
         onOpen = onOpen,
         onHold = {},
@@ -677,6 +679,14 @@ class HomeScreenTest {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(onStatusTap = { tapped = true }) } }
         composeRule.onNodeWithContentDescription("Battery 54 percent, on Wi-Fi").performClick()
         assertEquals(true, tapped)
+    }
+
+    @Test
+    fun theMicAsksForVoiceInput() {
+        var asked = false
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(onVoice = { asked = true }) } }
+        composeRule.onNodeWithContentDescription("Speak instead of typing").performClick()
+        assertEquals(true, asked)
     }
 
     @Test

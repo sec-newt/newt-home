@@ -225,6 +225,7 @@ fun HomeScreen(
     profiles: List<ProfileView> = emptyList(),
     onToggleProfileLock: (ProfileKind) -> Unit = {},
     onStatusTap: () -> Unit = {},
+    onVoice: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -259,7 +260,7 @@ fun HomeScreen(
                         HomePage(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
-                            agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden,
+                            agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
                         )
                     }
                 }
@@ -301,6 +302,7 @@ private fun HomePage(
     onFixCalendar: () -> Unit,
     onDateHold: () -> Unit,
     isHidden: (LauncherApp) -> Boolean,
+    onVoice: () -> Unit,
 ) {
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
@@ -372,7 +374,7 @@ private fun HomePage(
             NavButton("← Folders", "Folders", Modifier.weight(1f)) { onScreen(Screen.FOLDERS) }
             NavButton("All apps ↑", "All apps", Modifier.weight(1f)) { onScreen(Screen.APPS) }
         }
-        Prompt(query, onQueryChange, onSubmit)
+        Prompt(query, onQueryChange, onSubmit, onVoice)
     }
 }
 
@@ -1152,6 +1154,23 @@ private fun Branch(symbol: String) {
     )
 }
 
+/** Material's microphone shape. */
+private val MicShape: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Mic",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).addPath(
+        pathData = addPathNodes(
+            "M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3z" +
+                "M17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11H5c0,3.41 2.72,6.23 6,6.72V21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z",
+        ),
+        fill = SolidColor(Color.Black),
+    ).build()
+}
+
 /** Material's folder shape. */
 private val FolderShape: ImageVector by lazy {
     ImageVector.Builder(
@@ -1267,7 +1286,7 @@ private fun AddRow(label: String, onClick: () -> Unit) {
 
 /** The `~$` prompt. Capitals and autocorrect are off: it's for app names, not sentences. */
 @Composable
-private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit) {
+private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     var focused by remember { mutableStateOf(false) }
     Row(
@@ -1329,6 +1348,19 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
         if (query.isNotEmpty()) {
             TextButton(onClick = { onQueryChange("") }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Clear", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            }
+        } else {
+            // Speak instead of typing: the phone's voice input app (like FUTO Voice Input)
+            // listens and hands back the words; Newt Home never uses the microphone itself.
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClickLabel = "Speak", onClick = onVoice)
+                    .semantics { contentDescription = "Speak instead of typing" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(MicShape, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(28.dp))
             }
         }
     }
