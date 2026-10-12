@@ -353,6 +353,7 @@ fun HomeRoute(
                     query = example
                 },
                 onDismiss = ::closeSheets,
+                onSwitchLook = { runCommand(Command.Look(null)) },
             )
         } else if (newFolder) {
             NewFolderSheet(

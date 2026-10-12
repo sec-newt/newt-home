@@ -595,7 +595,13 @@ fun AgendaSheet(
  * so nothing runs from this list by itself.
  */
 @Composable
-fun HelpSheet(commands: List<CommandHelp>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+fun HelpSheet(
+    commands: List<CommandHelp>,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSwitchLook: (() -> Unit)? = null,
+) {
+    val clean = cleanLook()
     MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Commands") }) {
         Text(
             "Type one at the prompt and press Enter. Capitals don't matter, and app names always work too.",
@@ -603,7 +609,14 @@ fun HelpSheet(commands: List<CommandHelp>, onPick: (String) -> Unit, onDismiss: 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
-        commands.forEach { MenuOption("~$ ${it.example}", it.does, onClick = { onPick(it.example) }) }
+        commands.forEach { MenuOption(if (clean) it.example else "~$ ${it.example}", it.does, onClick = { onPick(it.example) }) }
+        if (onSwitchLook != null) {
+            MenuOption(
+                if (clean) "Switch to the terminal look" else "Switch to the clean look",
+                if (clean) "The ~$ prompt, scanlines and the newt" else "Plain cards and words, like Newt Phone",
+                onClick = onSwitchLook,
+            )
+        }
         SheetButton("Close", onDismiss)
     }
 }

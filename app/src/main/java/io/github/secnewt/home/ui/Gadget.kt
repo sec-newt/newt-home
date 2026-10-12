@@ -152,6 +152,11 @@ private fun Color.lightness(): Float = 0.2126f * red + 0.7152f * green + 0.0722f
  */
 @Composable
 fun BootLine(command: String, bootKey: Int, animate: Boolean, content: @Composable (alpha: Float) -> Unit) {
+    // The clean look has no prompt: just what's under it.
+    if (cleanLook()) {
+        content(1f)
+        return
+    }
     var shown by remember { mutableIntStateOf(command.length) }
     LaunchedEffect(bootKey, animate) {
         if (!animate) {

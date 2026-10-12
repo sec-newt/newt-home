@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -689,6 +690,81 @@ class HomeScreenTest {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(onVoice = { asked = true }) } }
         composeRule.onNodeWithContentDescription("Speak instead of typing").performClick()
         assertEquals(true, asked)
+    }
+
+    // The clean look: the same screens in plain cards and words, like Newt Phone.
+    @Composable
+    private fun Clean(content: @Composable () -> Unit) =
+        CompositionLocalProvider(LocalHomeLook provides HomeLook.CLEAN, content = content)
+
+    private val phoneMissed = favorites.map { if (it.name == "Phone") it.copy(alert = "2 missed") else it }
+
+    @Test
+    fun cleanHomeDark() = render("clean_home_dark", dark = true) {
+        Clean { Home(favs = phoneMissed, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanHomeLight() = render("clean_home_light", dark = false) {
+        Clean { Home(favs = phoneMissed, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanHomeLargeText() = render("clean_home_200_percent", dark = true, fontScale = 2f) {
+        Clean { Home(favs = phoneMissed, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanCommand() = render("clean_command_dark", dark = true) {
+        Clean { Home(view = commandResults("timer 10", "start a 10 min timer", ready = true), query = "timer 10") }
+    }
+
+    @Test
+    fun cleanCommandIncompleteLight() = render("clean_command_incomplete_light", dark = false) {
+        Clean { Home(view = commandResults("timer", "how long? like timer 10, timer 90s or timer 1h 30m", ready = false), query = "timer") }
+    }
+
+    @Test
+    fun cleanFolders() = render("clean_folders_dark", dark = true) { Clean { Home(screen = Screen.FOLDERS) } }
+
+    @Test
+    fun cleanFoldersLargeText() = render("clean_folders_200_percent", dark = false, fontScale = 2f) {
+        Clean { Home(screen = Screen.FOLDERS) }
+    }
+
+    @Test
+    fun cleanAllApps() = render("clean_all_apps_dark", dark = true) {
+        Clean { Home(screen = Screen.APPS, profiles = workAndPrivate) }
+    }
+
+    @Test
+    fun cleanAllAppsLight() = render("clean_all_apps_light", dark = false) { Clean { Home(screen = Screen.APPS) } }
+
+    @Test
+    fun cleanHelpSheet() = render("clean_help_dark", dark = true) {
+        Clean {
+            WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = {}) }) { Home() }
+        }
+    }
+
+    @Test
+    fun cleanLookUsesWords() {
+        composeRule.setContent { NewtTheme(darkTheme = true) { Clean { Home() } } }
+        // A heading in place of the `~$ ls favs` line, and the search field's own wording.
+        composeRule.onNodeWithText("Favorites").assertExists()
+        composeRule.onNodeWithText("Search, or type help", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun theCommandsSheetSwitchesTheLook() {
+        var switched = false
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = { switched = true }) }) { Home() }
+            }
+        }
+        composeRule.onNodeWithText("Switch to the clean look").performScrollTo().performClick()
+        assertEquals(true, switched)
     }
 
     @Test

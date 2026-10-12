@@ -32,6 +32,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,8 @@ import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Website
 import java.util.UUID
 import io.github.secnewt.home.ui.HomeRoute
+import io.github.secnewt.home.ui.HomeLook
+import io.github.secnewt.home.ui.LocalHomeLook
 import io.github.secnewt.home.ui.theme.NewtTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -97,6 +100,9 @@ class MainActivity : ComponentActivity() {
     private var hidden by mutableStateOf<Set<String>>(emptySet())
     private var searchWords by mutableStateOf<Map<String, List<String>>>(emptyMap())
     private var websites by mutableStateOf<List<Website>>(emptyList())
+
+    /** Terminal or clean; `look clean` and `look terminal` at the prompt switch it. */
+    private var look by mutableStateOf(HomeLook.TERMINAL)
 
     // "2 missed" under Phone, from Newt Phone (only the number, only for Newt-signed apps).
     private var missed by mutableStateOf<Int?>(null)
@@ -167,6 +173,7 @@ class MainActivity : ComponentActivity() {
         hidden = store.hidden()
         searchWords = store.searchWords()
         websites = store.websites()
+        look = HomeLook.named(store.look())
         missedCalls = MissedCalls(this)
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         ContextCompat.registerReceiver(
@@ -188,65 +195,67 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NewtTheme {
-                HomeRoute(
-                    // Private space apps stay out of search, favorites and folders.
-                    apps = installed.filter { Profiles.searchable(it.app.profile) }.map { withAlert(it.app) } +
-                        websites.map { it.toApp() },
-                    profileViews = profiles.map { p ->
-                        ProfileView(p.kind, p.locked, installed.filter { it.user == p.user }.map { it.app })
-                    },
-                    onToggleProfileLock = ::toggleProfileLock,
-                    systemInfo = ::systemInfo,
-                    favoriteKeys = favoriteKeys,
-                    folders = folders,
-                    openFolder = openFolder,
-                    uses = uses,
-                    resetSignal = resetSignal,
-                    bootKey = bootKey,
-                    animateBoot = animateBoot,
-                    status = status.copy(flashlight = torchOn),
-                    onOpen = ::open,
-                    onFavoritesChange = {
-                        favoriteKeys = it
-                        store.setFavorites(it)
-                    },
-                    onFoldersChange = {
-                        folders = it
-                        store.setFolders(it)
-                    },
-                    onOpenFolderChange = {
-                        openFolder = it
-                        store.setOpenFolder(it)
-                    },
-                    onAppInfo = ::showAppInfo,
-                    onRemoveShortcut = ::removeShortcut,
-                    appShortcuts = ::shortcutsFor,
-                    onOpenAppShortcut = ::openAppShortcut,
-                    onAddWebsite = ::addWebsite,
-                    onClock = ::openClock,
-                    onDate = ::openCalendar,
-                    agenda = agenda,
-                    onAgendaChoice = ::chooseEvents,
-                    onFixCalendar = ::showOwnSettings,
-                    onDateHold = ::toggleEvents,
-                    onOpenEvent = ::openEvent,
-                    onStopEvents = {
-                        setShowEvents(false)
-                        say("Today's events are hidden. Press and hold the date to bring them back.")
-                    },
-                    onNewDay = ::refreshAgenda,
-                    onCommand = ::runCommand,
-                    hidden = hidden,
-                    searchWords = searchWords,
-                    onHiddenChange = {
-                        hidden = it
-                        store.setHidden(it)
-                    },
-                    onSearchWordsChange = {
-                        searchWords = it
-                        store.setSearchWords(it)
-                    },
-                )
+                CompositionLocalProvider(LocalHomeLook provides look) {
+                    HomeRoute(
+                        // Private space apps stay out of search, favorites and folders.
+                        apps = installed.filter { Profiles.searchable(it.app.profile) }.map { withAlert(it.app) } +
+                            websites.map { it.toApp() },
+                        profileViews = profiles.map { p ->
+                            ProfileView(p.kind, p.locked, installed.filter { it.user == p.user }.map { it.app })
+                        },
+                        onToggleProfileLock = ::toggleProfileLock,
+                        systemInfo = ::systemInfo,
+                        favoriteKeys = favoriteKeys,
+                        folders = folders,
+                        openFolder = openFolder,
+                        uses = uses,
+                        resetSignal = resetSignal,
+                        bootKey = bootKey,
+                        animateBoot = animateBoot,
+                        status = status.copy(flashlight = torchOn),
+                        onOpen = ::open,
+                        onFavoritesChange = {
+                            favoriteKeys = it
+                            store.setFavorites(it)
+                        },
+                        onFoldersChange = {
+                            folders = it
+                            store.setFolders(it)
+                        },
+                        onOpenFolderChange = {
+                            openFolder = it
+                            store.setOpenFolder(it)
+                        },
+                        onAppInfo = ::showAppInfo,
+                        onRemoveShortcut = ::removeShortcut,
+                        appShortcuts = ::shortcutsFor,
+                        onOpenAppShortcut = ::openAppShortcut,
+                        onAddWebsite = ::addWebsite,
+                        onClock = ::openClock,
+                        onDate = ::openCalendar,
+                        agenda = agenda,
+                        onAgendaChoice = ::chooseEvents,
+                        onFixCalendar = ::showOwnSettings,
+                        onDateHold = ::toggleEvents,
+                        onOpenEvent = ::openEvent,
+                        onStopEvents = {
+                            setShowEvents(false)
+                            say("Today's events are hidden. Press and hold the date to bring them back.")
+                        },
+                        onNewDay = ::refreshAgenda,
+                        onCommand = ::runCommand,
+                        hidden = hidden,
+                        searchWords = searchWords,
+                        onHiddenChange = {
+                            hidden = it
+                            store.setHidden(it)
+                        },
+                        onSearchWordsChange = {
+                            searchWords = it
+                            store.setSearchWords(it)
+                        },
+                    )
+                }
             }
         }
     }
@@ -414,6 +423,11 @@ class MainActivity : ComponentActivity() {
                 if (!tryStart(files) && !openByName("Files")) say("No files app found")
             }
             is Command.Ask -> ask(command.question)
+            is Command.Look -> {
+                val clean = command.clean ?: (look != HomeLook.CLEAN)
+                look = if (clean) HomeLook.CLEAN else HomeLook.TERMINAL
+                store.setLook(look.name)
+            }
             // Shown by the home screen itself.
             Command.Help, Command.Sys -> Unit
         }

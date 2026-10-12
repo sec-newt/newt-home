@@ -62,6 +62,13 @@ class HomeStore(context: Context) {
         prefs.edit().putString(WEBSITES, Websites.encode(sites)).apply()
     }
 
+    /** The home screen's look by name ("TERMINAL" or "CLEAN"), or null for the default. */
+    fun look(): String? = prefs.getString(LOOK, null)
+
+    fun setLook(name: String) {
+        prefs.edit().putString(LOOK, name).apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -79,6 +86,7 @@ class HomeStore(context: Context) {
         const val HIDDEN = "hidden"
         const val SEARCH_WORDS = "search_words"
         const val WEBSITES = "websites"
+        const val LOOK = "look"
         const val USES = "uses:"
     }
 }

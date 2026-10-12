@@ -20,6 +20,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   `next: 3:00 Dentist · 2 more today` sits under the date. Tap it or the date for the
   day's list, and tap an event to open it in your calendar app. **Stop showing events**
   in that list turns it off; press and hold the date to be asked again.
+- **Two looks.** The terminal look (the `~$` prompt, scanlines and the ASCII newt) or the
+  clean look: plain cards and words, like Newt Phone, with every feature the same. Type
+  `look clean` or `look terminal` at the prompt, or use the button at the end of `help`.
+  Newt Home remembers your choice.
 - **Swipe down to close.** Every card that slides up (the calendar, commands, app
   menus and the rest) closes with a swipe down, as well as with back or tapping outside.
   It follows your finger, so a short drag springs back.
