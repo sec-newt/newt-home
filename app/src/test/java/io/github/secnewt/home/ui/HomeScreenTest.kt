@@ -748,6 +748,66 @@ class HomeScreenTest {
     }
 
     @Test
+    fun cleanHoldMenu() = render("clean_hold_menu_dark", dark = true) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { SignalMenu() }) { Home() } }
+    }
+
+    @Test
+    fun cleanHoldMenuLargeText() = render("clean_hold_menu_200_percent", dark = false, fontScale = 2f) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { SignalMenu() }) { Home() } }
+    }
+
+    @Test
+    fun cleanFolderMenu() = render("clean_folder_menu_light", dark = false) {
+        Clean {
+            WithHoldMenu(
+                menuOpen = true,
+                menu = {
+                    FolderMenu(
+                        name = "Games",
+                        appCount = 1,
+                        otherNames = listOf("AI", "Blind tools", "Productivity"),
+                        canMoveUp = true,
+                        canMoveDown = true,
+                        onRename = {},
+                        onMove = {},
+                        onDelete = {},
+                        onDismiss = {},
+                    )
+                },
+            ) { Home() }
+        }
+    }
+
+    @Test
+    fun cleanDaySheet() = render("clean_day_dark", dark = true) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { DaySheet() }) { Home(agenda = Agenda.Today(events)) } }
+    }
+
+    @Test
+    fun cleanDaySheetLight() = render("clean_day_light", dark = false) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { DaySheet() }) { Home(agenda = Agenda.Today(events)) } }
+    }
+
+    @Test
+    fun cleanSysSheet() = render("clean_sys_dark", dark = true) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { SysSheet(sysInfo, onDismiss = {}) }) { Home() } }
+    }
+
+    @Test
+    fun cleanSysSheetLargeText() = render("clean_sys_200_percent", dark = false, fontScale = 2f) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { SysSheet(sysInfo, onDismiss = {}) }) { Home() } }
+    }
+
+    @Test
+    fun cleanShortcutButtonsOpenShortcuts() {
+        var opened: AppShortcut? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { Clean { SignalMenu { opened = it } } } }
+        composeRule.onNodeWithText("Sam").performClick()
+        assertEquals(signalShortcuts.first { it.label == "Sam" }, opened)
+    }
+
+    @Test
     fun cleanLookUsesWords() {
         composeRule.setContent { NewtTheme(darkTheme = true) { Clean { Home() } } }
         // A heading in place of the `~$ ls favs` line, and the search field's own wording.
