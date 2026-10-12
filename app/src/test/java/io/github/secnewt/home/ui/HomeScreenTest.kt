@@ -18,6 +18,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -687,6 +689,26 @@ class HomeScreenTest {
         composeRule.setContent { NewtTheme(darkTheme = true) { Home(onVoice = { asked = true }) } }
         composeRule.onNodeWithContentDescription("Speak instead of typing").performClick()
         assertEquals(true, asked)
+    }
+
+    @Test
+    fun swipingDownClosesAllApps() {
+        var went: Screen? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) } }
+        composeRule.onNodeWithTag(ALL_APPS_LIST).performTouchInput { swipeDown() }
+        assertEquals(Screen.HOME, went)
+    }
+
+    @Test
+    fun swipingDownClosesASheet() {
+        var closed = false
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = { closed = true }) }) { Home() }
+            }
+        }
+        composeRule.onNodeWithText("Commands").performTouchInput { swipeDown() }
+        assertEquals(true, closed)
     }
 
     @Test

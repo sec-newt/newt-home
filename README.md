@@ -20,6 +20,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   `next: 3:00 Dentist · 2 more today` sits under the date. Tap it or the date for the
   day's list, and tap an event to open it in your calendar app. **Stop showing events**
   in that list turns it off; press and hold the date to be asked again.
+- **Swipe down to close.** Every card that slides up (the calendar, commands, app
+  menus and the rest) closes with a swipe down, as well as with back or tapping outside.
+  It follows your finger, so a short drag springs back.
 - **Three screens.** Home has the time, date and favorites (`~$ ls favs`). Swipe right
   for folders (`~$ tree`), or swipe up past the end of the list for all apps (`~$ ls`).
   The **← Folders** and **All apps ↑** buttons above the prompt do the same, so
@@ -30,7 +33,8 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   Press and hold an app and choose **Move to folder** (or make a new one there).
   Press and hold a folder to rename, move or delete it; deleting a folder never
   removes its apps. It starts with AI, Blind tools, Games and Productivity.
-- **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt. The **letter
+- **All apps.** Tap **All apps ↑**, swipe up, or type `ls` at the prompt. Swipe down
+  from the top of the list (or use back) to go home again. The **letter
   strip** down the right side jumps to a letter: touch it, or slide your thumb along it,
   and the letter shows big in the middle of the screen while the list follows. Or tap
   **Letters** (or any letter heading) for the **letter grid**: big buttons for each

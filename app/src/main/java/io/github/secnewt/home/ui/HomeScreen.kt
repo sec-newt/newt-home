@@ -1,6 +1,7 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -430,7 +431,8 @@ private fun AppsPage(
     onToggleProfileLock: (ProfileKind) -> Unit,
     onHome: () -> Unit,
 ) {
-    val pullDown = rememberEdgePull(up = false, onPull = onHome)
+    // Swiping down past the top of the list slides All apps down with your finger and closes it.
+    val pullDown = rememberSwipeDismiss(onHome)
     var showHidden by remember { mutableStateOf(false) }
     // Grouped the way the list is sorted (accents ignored), so each letter appears once.
     // The prompt line is row 0, so the first header is row 1.
@@ -446,6 +448,7 @@ private fun AppsPage(
     }
     Box(
         Modifier
+            .graphicsLayer { translationY = pullDown.offset }
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
@@ -454,7 +457,9 @@ private fun AppsPage(
             if (gridOpen) {
                 LetterGrid(
                     groups.map { it.letter to it.items.size },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScroll(pullDown.connection),
                     onPick = { letter ->
                         only = letter
                         gridOpen = false
@@ -465,7 +470,7 @@ private fun AppsPage(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .nestedScroll(pullDown),
+                        .nestedScroll(pullDown.connection),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     item { PromptLine("ls ${onlyGroup.letter.lowercase()}*") }
@@ -479,7 +484,7 @@ private fun AppsPage(
                         .testTag(ALL_APPS_LIST)
                         .weight(1f)
                         .fillMaxHeight()
-                        .nestedScroll(pullDown),
+                        .nestedScroll(pullDown.connection),
                     contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 ) {
                     item { PromptLine("ls") }
