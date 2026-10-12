@@ -85,6 +85,18 @@ class CommandsTest {
     }
 
     @Test
+    fun `look switches between terminal and clean`() {
+        assertEquals(Command.Look(null), ready("look"))
+        assertEquals(Command.Look(true), ready("look clean"))
+        assertEquals(Command.Look(true), ready("Theme Modern"))
+        assertEquals(Command.Look(false), ready("look terminal"))
+        assertTrue(Commands.parse("look purple") is CommandMatch.Incomplete)
+        assertTrue(Commands.mightBecomeCommand("loo"))
+        val time = { h: Int, m: Int -> "$h:$m" }
+        assertEquals("switch to the clean look", Commands.describe(Command.Look(true), time))
+    }
+
+    @Test
     fun `app names are not commands`() {
         assertNull(Commands.parse("signal"))
         assertNull(Commands.parse("tim"))

@@ -73,6 +73,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -110,6 +112,7 @@ import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AgendaText
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
@@ -243,7 +246,7 @@ fun HomeScreen(
     val appsOpen = screen == Screen.APPS
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-        GadgetBackground()
+        if (!cleanLook()) GadgetBackground()
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
             StatusLine(status, onStatusTap)
             Box(Modifier.weight(1f)) {
@@ -333,7 +336,7 @@ private fun HomePage(
             }
             when (view) {
                 HomeView.Favorites -> {
-                    item { PromptLine("ls favs", short = true) }
+                    item { PromptLine("ls favs", short = true, title = "Favorites") }
                     if (favorites.isEmpty()) {
                         item { Hint("# press and hold any app to add it here") }
                     }
@@ -344,7 +347,7 @@ private fun HomePage(
                     if (command != null) {
                         item(key = "command") { CommandRow(view.query.trim(), command, onSubmit) }
                     }
-                    item { PromptLine("find ${view.query.trim()}") }
+                    item { PromptLine("find ${view.query.trim()}", title = if (view.results.isEmpty()) null else "Apps") }
                     if (view.results.isEmpty() && command == null) {
                         item { Hint("# no app matches “${view.query.trim()}”") }
                     }
@@ -397,7 +400,7 @@ private fun FoldersPage(
                 .fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            item { PromptLine("tree", short = true) }
+            item { PromptLine("tree", short = true, title = "Folders") }
             for ((index, folder) in folders.withIndex()) {
                 val open = folder.name == openFolder
                 item(key = "folder:${folder.name}") {
@@ -452,7 +455,7 @@ private fun AppsPage(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        GadgetBackground()
+        if (!cleanLook()) GadgetBackground()
         Column(Modifier.fillMaxSize()) {
             if (gridOpen) {
                 LetterGrid(
@@ -487,7 +490,7 @@ private fun AppsPage(
                         .nestedScroll(pullDown.connection),
                     contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 ) {
-                    item { PromptLine("ls") }
+                    item { PromptLine("ls", title = "All apps") }
                     for (group in groups) {
                         item(key = "letter:${group.letter}") { LetterHeader(group.letter) { gridOpen = true } }
                         items(group.items, key = { it.key }) { app -> AppRow(app, onOpen = onOpen, onHold = onHold) }
@@ -537,7 +540,7 @@ private fun AppsPage(
 @Composable
 private fun LetterGrid(letters: List<Pair<String, Int>>, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
     Column(modifier.fillMaxWidth()) {
-        PromptLine("ls -d [a-z]")
+        PromptLine("ls -d [a-z]", title = "Jump to a letter")
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 76.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -684,10 +687,10 @@ private fun ProfileHeader(profile: ProfileView, onToggleLock: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "~/" + profile.kind.title.lowercase().replace(' ', '-') + "/",
-            fontFamily = NewtFonts.Mono,
+            if (cleanLook()) profile.kind.title else "~/" + profile.kind.title.lowercase().replace(' ', '-') + "/",
+            fontFamily = if (cleanLook()) NewtFonts.Display else NewtFonts.Mono,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
+            fontSize = if (cleanLook()) 21.sp else 18.sp,
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier
                 .weight(1f)
@@ -723,7 +726,7 @@ private fun HiddenToggle(count: Int, open: Boolean, onToggle: () -> Unit) {
     ) {
         Text(
             (if (open) "▾ " else "▸ ") + noun,
-            fontFamily = NewtFonts.Mono,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
             color = MaterialTheme.colorScheme.secondary,
@@ -746,10 +749,10 @@ private fun LetterHeader(letter: String, onClick: () -> Unit) {
     ) {
         Text(
             letter,
-            fontFamily = NewtFonts.Mono,
+            fontFamily = if (cleanLook()) NewtFonts.Display else NewtFonts.Mono,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.secondary,
+            fontSize = if (cleanLook()) 22.sp else 18.sp,
+            color = if (cleanLook()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
         )
     }
 }
@@ -768,25 +771,30 @@ private fun NavRow(content: @Composable RowScope.() -> Unit) {
 /** A screen switch with words, so swiping is never the only way. [spoken] drops the arrows. */
 @Composable
 private fun NavButton(label: String, spoken: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val clean = cleanLook()
+    val shape = RoundedCornerShape(if (clean) 14.dp else 12.dp)
     val interactions = remember { MutableInteractionSource() }
     Box(
         modifier
-            .heightIn(min = 52.dp)
+            .heightIn(min = if (clean) 56.dp else 52.dp)
             .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .background(if (clean) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surfaceContainerLow)
+            .then(
+                if (clean) Modifier.border(neonOutline(), shape)
+                else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape),
+            )
             .clickable(interactionSource = interactions, indication = LocalIndication.current, onClick = onClick)
             .semantics { contentDescription = spoken },
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            label,
-            fontFamily = NewtFonts.Mono,
+            // The clean look drops the arrows: "Folders", "All apps", "Home".
+            if (clean) label.filterNot { it in "←→↑↓" }.trim() else label,
+            fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = if (clean) 19.sp else 16.sp,
+            color = if (clean) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.clearAndSetSemantics { },
         )
     }
@@ -800,6 +808,10 @@ private fun NavButton(label: String, spoken: String, modifier: Modifier = Modifi
 private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
     val parts = status.parts()
     if (parts.isEmpty()) return
+    if (cleanLook()) {
+        CleanStatus(status, onTap)
+        return
+    }
     val label = LocalTerminalColors.current.prompt
     val warn = MaterialTheme.colorScheme.error
     Text(
@@ -838,9 +850,77 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
     )
 }
 
-/** `newt@home:~$ date`: the terminal line above each section, for the look only. */
+/** The clean look's status: "Wi-Fi · 82%" in a pill. Tap it for the system info. */
 @Composable
-private fun PromptLine(command: String, short: Boolean = false) {
+private fun CleanStatus(status: DeviceStatus, onTap: () -> Unit) {
+    val words = buildList {
+        when (status.connection) {
+            Connection.WIFI -> add("Wi-Fi")
+            Connection.MOBILE -> add("Mobile data")
+            Connection.OFFLINE -> add("Offline")
+            Connection.UNKNOWN -> Unit
+        }
+        status.battery?.let { battery ->
+            add(
+                "$battery%" + when {
+                    status.charging -> " charging"
+                    status.batteryLow -> " low"
+                    else -> ""
+                },
+            )
+        }
+        if (status.flashlight) add("Flashlight on")
+    }
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, top = 6.dp)
+            .heightIn(min = 48.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .clickable(onClickLabel = "System info", onClick = onTap)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clearAndSetSemantics {
+                contentDescription = status.spoken()
+                onClick(label = "System info") {
+                    onTap()
+                    true
+                }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            words.joinToString(" · "),
+            fontFamily = NewtFonts.Body,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (status.batteryLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * `newt@home:~$ date`: the terminal line above each section, for the look only. The clean
+ * look shows [title] instead, as a heading, or nothing if there's none.
+ */
+@Composable
+private fun PromptLine(command: String, short: Boolean = false, title: String? = null) {
+    if (cleanLook()) {
+        if (title != null) {
+            Text(
+                title,
+                fontFamily = NewtFonts.Display,
+                fontWeight = FontWeight.Bold,
+                fontSize = 19.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(start = 4.dp, top = 16.dp, bottom = 6.dp)
+                    .semantics { heading() },
+            )
+        }
+        return
+    }
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(color = LocalTerminalColors.current.prompt, fontWeight = FontWeight.Bold)) {
@@ -868,6 +948,10 @@ private fun ClockAndDate(
     dateLabel: String = "Open Calendar",
     onDateHold: () -> Unit = {},
 ) {
+    if (cleanLook()) {
+        CleanClockAndDate(clock, date, onClock, onDate, modifier, dateLabel, onDateHold)
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Box(
             Modifier
@@ -907,12 +991,55 @@ private fun ClockAndDate(
     }
 }
 
+/** The clean look's clock: big and plain, with the date under it. Each still opens its app. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CleanClockAndDate(
+    clock: String,
+    date: String,
+    onClock: () -> Unit,
+    onDate: () -> Unit,
+    modifier: Modifier,
+    dateLabel: String,
+    onDateHold: () -> Unit,
+) {
+    Column(modifier) {
+        Box(
+            Modifier
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClickLabel = "Open Clock", onClick = onClock)
+                .padding(horizontal = 4.dp)
+                .semantics { heading() },
+        ) {
+            Text(clock, fontFamily = NewtFonts.Display, fontWeight = FontWeight.Bold, fontSize = 72.sp, lineHeight = 76.sp)
+        }
+        Box(
+            Modifier
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .combinedClickable(
+                    onClickLabel = dateLabel,
+                    onLongClickLabel = "Show or hide today's events",
+                    onLongClick = onDateHold,
+                    onClick = onDate,
+                )
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(date, fontFamily = NewtFonts.Body, fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 @Composable
 private fun Hint(text: String, top: Dp = 12.dp) {
+    val clean = cleanLook()
     Text(
-        text,
-        fontFamily = NewtFonts.Mono,
-        fontSize = 14.sp,
+        // The clean look drops the `# ` and `└ ` that make a hint look like a terminal comment.
+        if (clean) text.removePrefix("# ").removePrefix("└ ").replaceFirstChar { it.uppercase() } else text,
+        fontFamily = rowFont(),
+        fontSize = if (clean) 17.sp else 14.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = top, start = 4.dp),
     )
@@ -935,9 +1062,9 @@ private fun AgendaLine(
         Agenda.Off -> Unit
         Agenda.Offer -> Column(Modifier.padding(top = 4.dp)) {
             Text(
-                "show today's events here?",
-                fontFamily = NewtFonts.Mono,
-                fontSize = 15.sp,
+                if (cleanLook()) "Show today's events here?" else "show today's events here?",
+                fontFamily = rowFont(),
+                fontSize = if (cleanLook()) 18.sp else 15.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
             )
@@ -947,14 +1074,14 @@ private fun AgendaLine(
             }
         }
         Agenda.NeedsPermission -> AgendaRow(
-            "calendar access is off · tap to fix",
+            if (cleanLook()) "Calendar access is off · tap to fix" else "calendar access is off · tap to fix",
             MaterialTheme.colorScheme.error,
             "Calendar access is off. Opens Newt Home's settings to turn it on.",
             onFix,
         )
         is Agenda.Today -> AgendaRow(
-            AgendaText.line(agenda.events, now, time),
-            LocalTerminalColors.current.prompt,
+            AgendaText.line(agenda.events, now, time).let { if (cleanLook()) it.replaceFirstChar { c -> c.uppercase() } else it },
+            if (cleanLook()) MaterialTheme.colorScheme.onSurface else LocalTerminalColors.current.prompt,
             null,
             onOpen,
         )
@@ -963,17 +1090,38 @@ private fun AgendaLine(
 
 @Composable
 private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -> Unit) {
+    val clean = cleanLook()
+    val card = RoundedCornerShape(16.dp)
     Box(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            // The clean look puts it on a card, like Newt Phone's.
+            .then(
+                if (clean) {
+                    Modifier
+                        .padding(top = 10.dp)
+                        .clip(card)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .border(neonOutline(), card)
+                } else {
+                    Modifier
+                },
+            )
+            .heightIn(min = if (clean) 60.dp else 48.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable(onClickLabel = if (spoken == null) "Today's events" else null, onClick = onClick)
             .padding(horizontal = 4.dp)
             .then(if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text, fontFamily = NewtFonts.Mono, fontSize = 16.sp, color = color)
+        Text(
+            text,
+            fontFamily = rowFont(),
+            fontSize = if (clean) 19.sp else 16.sp,
+            fontWeight = if (clean) FontWeight.Bold else null,
+            color = color,
+            modifier = if (clean) Modifier.padding(horizontal = 12.dp, vertical = 10.dp) else Modifier,
+        )
     }
 }
 
@@ -1000,10 +1148,18 @@ private fun accentFor(name: String): Color {
 @Composable
 fun AppIcon(app: LauncherApp, size: Dp = 34.dp) {
     val color = accentFor(app.name)
+    // Terminal: an outlined square. Clean: a soft filled tile, like Newt Phone's.
+    val tile = if (cleanLook()) {
+        Modifier
+            .clip(RoundedCornerShape(size * 0.3f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    } else {
+        Modifier.border(1.5.dp, color, RoundedCornerShape(8.dp))
+    }
     Box(
         Modifier
             .size(size)
-            .border(1.5.dp, color, RoundedCornerShape(8.dp)),
+            .then(tile),
         contentAlignment = Alignment.Center,
     ) {
         val icon = app.icon
@@ -1014,7 +1170,7 @@ fun AppIcon(app: LauncherApp, size: Dp = 34.dp) {
                 app.name.take(1).uppercase(),
                 fontFamily = NewtFonts.Mono,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = if (size > 40.dp) 19.sp else 16.sp,
                 color = color,
             )
         }
@@ -1033,12 +1189,13 @@ private fun AppRow(
     branch: String? = null,
 ) {
     val haptics = LocalHapticFeedback.current
-    val shape = RoundedCornerShape(10.dp)
+    val clean = cleanLook()
+    val shape = RoundedCornerShape(if (clean) 14.dp else 10.dp)
     val interactions = remember { MutableInteractionSource() }
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = if (clean) 60.dp else 48.dp)
             .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
             .clip(shape)
             .then(if (highlighted) Modifier.border(neonOutline(), shape) else Modifier)
@@ -1056,14 +1213,18 @@ private fun AppRow(
             .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (branch != null) Branch(branch)
-        AppIcon(app, size = if (compact) 30.dp else 34.dp)
-        Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
+        if (branch != null) {
+            // Apps inside an open folder: tree lines in the terminal look, an indent in the clean one.
+            if (clean) Spacer(Modifier.width(16.dp)) else Branch(branch)
+        }
+        AppIcon(app, size = if (clean) 44.dp else if (compact) 30.dp else 34.dp)
+        Spacer(Modifier.width(if (clean) 16.dp else if (compact) 8.dp else 12.dp))
         Column {
             Text(
                 app.name,
-                fontFamily = NewtFonts.Mono,
-                fontSize = if (compact) 17.sp else 18.sp,
+                fontFamily = rowFont(),
+                fontWeight = if (clean) FontWeight.Bold else null,
+                fontSize = if (clean) 21.sp else if (compact) 17.sp else 18.sp,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             // A shortcut says where it came from, like "Vanadium shortcut", so it's not mistaken for an app.
@@ -1074,10 +1235,10 @@ private fun AppRow(
             val alert = app.alert
             if (alert != null) {
                 // A word, not just a red dot, so it's never color alone.
-                Text(alert, fontFamily = NewtFonts.Mono, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Text(alert, fontFamily = rowFont(), fontSize = if (clean) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
             if (line != null) {
-                Text(line, fontFamily = NewtFonts.Mono, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(line, fontFamily = rowFont(), fontSize = if (clean) 16.sp else 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -1089,6 +1250,10 @@ private fun AppRow(
  */
 @Composable
 private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
+    if (cleanLook()) {
+        CleanCommandRow(typed, command, onRun)
+        return
+    }
     val shape = RoundedCornerShape(10.dp)
     val interactions = remember { MutableInteractionSource() }
     val prompt = LocalTerminalColors.current.prompt
@@ -1142,6 +1307,51 @@ private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
                 color = if (command.ready) prompt else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/**
+ * The clean look's command: a card that lights up with the blue-to-purple gradient when it's
+ * ready ("Start a 10 min timer · Tap, or press Enter"), or says what's still needed.
+ */
+@Composable
+private fun CleanCommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp)
+            .heightIn(min = 64.dp)
+            .clip(shape)
+            .then(
+                if (command.ready) {
+                    Modifier
+                        .background(Brush.linearGradient(listOf(colors.primary, colors.secondary)))
+                        .clickable(onClickLabel = "Run", onClick = onRun)
+                } else {
+                    Modifier
+                        .background(colors.surfaceContainerLow)
+                        .border(1.dp, colors.outlineVariant, shape)
+                },
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        val text = if (command.ready) colors.onPrimary else colors.onSurface
+        Text(
+            if (command.ready) command.text.replaceFirstChar { it.uppercase() } else typed,
+            fontFamily = NewtFonts.Body,
+            fontWeight = FontWeight.Bold,
+            fontSize = 21.sp,
+            color = text,
+        )
+        Text(
+            if (command.ready) "Tap, or press Enter" else command.text.replaceFirstChar { it.uppercase() },
+            fontFamily = NewtFonts.Body,
+            fontSize = 17.sp,
+            color = if (command.ready) text else colors.onSurfaceVariant,
+        )
     }
 }
 
@@ -1215,14 +1425,26 @@ private fun FolderRow(
     onHold: (String) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
-    val shape = RoundedCornerShape(10.dp)
+    val clean = cleanLook()
+    val shape = RoundedCornerShape(if (clean) 16.dp else 10.dp)
     val interactions = remember { MutableInteractionSource() }
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            // The clean look makes each folder a card; the open one gets the neon outline.
+            .then(if (clean) Modifier.padding(top = 10.dp) else Modifier)
+            .heightIn(min = if (clean) 64.dp else 48.dp)
             .glow(pressed(interactions), color, neonOutline(), shape)
             .clip(shape)
+            .then(
+                when {
+                    !clean -> Modifier
+                    open -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow).border(neonOutline(), shape)
+                    else -> Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                },
+            )
             .combinedClickable(
                 interactionSource = interactions,
                 indication = LocalIndication.current,
@@ -1237,9 +1459,29 @@ private fun FolderRow(
             .semantics {
                 stateDescription = if (open) "open, ${folder.apps.size} apps" else "closed, ${folder.apps.size} apps"
             }
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = if (clean) 16.dp else 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (clean) {
+            Icon(FolderShape, contentDescription = null, tint = color, modifier = Modifier.size(30.dp))
+            Spacer(Modifier.width(14.dp))
+            Text(
+                folder.name,
+                fontFamily = NewtFonts.Body,
+                fontWeight = FontWeight.Bold,
+                fontSize = 21.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                if (folder.apps.size == 1) "1 app" else "${folder.apps.size} apps",
+                fontFamily = NewtFonts.Body,
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics { },
+            )
+            return@Row
+        }
         Text(
             if (open) "▾" else "▸",
             fontFamily = NewtFonts.Mono,
@@ -1282,8 +1524,9 @@ private fun AddRow(label: String, onClick: () -> Unit) {
                 withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("+ ") }
                 append(label)
             },
-            fontFamily = NewtFonts.Mono,
-            fontSize = 17.sp,
+            fontFamily = rowFont(),
+            fontWeight = if (cleanLook()) FontWeight.Bold else null,
+            fontSize = if (cleanLook()) 19.sp else 17.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -1292,32 +1535,44 @@ private fun AddRow(label: String, onClick: () -> Unit) {
 /** The `~$` prompt. Capitals and autocorrect are off: it's for app names, not sentences. */
 @Composable
 private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val clean = cleanLook()
+    // Clean: a rounded search field, purple at rest and blue while typing, like Newt Phone's.
+    val shape = RoundedCornerShape(if (clean) 30.dp else 16.dp)
     var focused by remember { mutableStateOf(false) }
     Row(
         Modifier
             .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)
             .fillMaxWidth()
             .heightIn(min = 60.dp)
-            .glow(focused, MaterialTheme.colorScheme.primary, neonOutline(), shape)
+            .glow(focused && !clean, MaterialTheme.colorScheme.primary, neonOutline(), shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .border(neonOutline(), shape)
-            .padding(start = 14.dp, end = 6.dp),
+            .then(
+                if (clean) {
+                    Modifier.border(2.dp, if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary, shape)
+                } else {
+                    Modifier.border(neonOutline(), shape)
+                },
+            )
+            .padding(start = if (clean) 16.dp else 14.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (clean) 10.dp else 8.dp),
     ) {
-        Text(
-            "~$",
-            fontFamily = NewtFonts.Mono,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = LocalTerminalColors.current.prompt,
-            modifier = Modifier.clearAndSetSemantics { },
-        )
+        if (clean) {
+            Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(26.dp))
+        } else {
+            Text(
+                "~$",
+                fontFamily = NewtFonts.Mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = LocalTerminalColors.current.prompt,
+                modifier = Modifier.clearAndSetSemantics { },
+            )
+        }
         val style = TextStyle(
-            fontFamily = NewtFonts.Mono,
-            fontWeight = FontWeight.Bold,
+            fontFamily = rowFont(),
+            fontWeight = if (clean) FontWeight.Normal else FontWeight.Bold,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -1342,7 +1597,7 @@ private fun Prompt(query: String, onQueryChange: (String) -> Unit, onSubmit: () 
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
                         Text(
-                            "type an app, or help…",
+                            if (clean) "Search, or type help" else "type an app, or help…",
                             style = style.copy(fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant),
                         )
                     }

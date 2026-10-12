@@ -28,6 +28,9 @@ sealed interface Command {
 
     /** This phone's system info, like the Linux `neofetch` command. */
     data object Sys : Command
+
+    /** [clean] true for the clean look, false for the terminal look, or null to switch. */
+    data class Look(val clean: Boolean?) : Command
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -62,6 +65,7 @@ object Commands {
         CommandHelp("ls", "Every app, A to Z"),
         CommandHelp("ask what's a good buttermilk substitute", "Asks the Claude app. ask on its own opens it"),
         CommandHelp("sys", "This phone's system info. Tapping the status line does the same"),
+        CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back"),
         CommandHelp("help", "This list"),
     )
 
@@ -96,11 +100,17 @@ object Commands {
             "help", "?" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Help) else null
             "ask" -> CommandMatch.Ready(Command.Ask(rest))
             "sys", "neofetch", "fastfetch" -> if (rest.isEmpty()) CommandMatch.Ready(Command.Sys) else null
+            "look", "theme" -> when (lower) {
+                "" -> CommandMatch.Ready(Command.Look(null))
+                "clean", "plain", "modern" -> CommandMatch.Ready(Command.Look(true))
+                "terminal", "classic" -> CommandMatch.Ready(Command.Look(false))
+                else -> CommandMatch.Incomplete(word, "$word clean or $word terminal")
+            }
             else -> null
         }
     }
 
-    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch")
+    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme")
 
     /**
      * Whether what's typed could still become a command (`hel` on the way to `help`). The
@@ -184,5 +194,10 @@ object Commands {
         Command.Help -> "list the commands"
         is Command.Ask -> if (command.question.isEmpty()) "open the Claude app" else "ask Claude: ${command.question}"
         Command.Sys -> "show this phone's system info"
+        is Command.Look -> when (command.clean) {
+            true -> "switch to the clean look"
+            false -> "switch to the terminal look"
+            null -> "switch between the terminal and clean looks"
+        }
     }
 }
