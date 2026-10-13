@@ -99,6 +99,7 @@ fun HomeRoute(
     var folderMenuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var newFolder by rememberSaveable { mutableStateOf(false) }
     var agendaOpen by rememberSaveable { mutableStateOf(false) }
+    var askHideEvents by rememberSaveable { mutableStateOf(false) }
     // The hourly strip, read from Newt Weather when the sheet opens.
     var hours by remember { mutableStateOf<List<WeatherHour>?>(null) }
     var helpOpen by rememberSaveable { mutableStateOf(false) }
@@ -110,6 +111,7 @@ fun HomeRoute(
         folderMenuFor = null
         newFolder = false
         agendaOpen = false
+        askHideEvents = false
         hours = null
         helpOpen = false
         addWebsite = false
@@ -191,7 +193,7 @@ fun HomeRoute(
 
     val today = agenda as? Agenda.Today
     val weatherOpen = hours != null && weather != null
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen || askHideEvents
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -344,6 +346,14 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (askHideEvents) {
+            HideEventsSheet(
+                onHide = {
+                    closeSheets()
+                    onDateHold()
+                },
+                onKeep = ::closeSheets,
+            )
         } else if (weatherOpen) {
             WeatherSheet(
                 now = weather!!,
@@ -388,7 +398,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen, menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen || askHideEvents, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -459,7 +469,16 @@ fun HomeRoute(
             time = time,
             onAgendaChoice = onAgendaChoice,
             onFixCalendar = onFixCalendar,
-            onDateHold = onDateHold,
+            // While events show, holding the date asks before hiding them; when they're
+            // hidden, it brings them back straight away.
+            onDateHold = {
+                if (agenda is Agenda.Today || agenda == Agenda.NeedsPermission) {
+                    closeSheets()
+                    askHideEvents = true
+                } else {
+                    onDateHold()
+                }
+            },
             weather = weather,
             onWeather = {
                 closeSheets()

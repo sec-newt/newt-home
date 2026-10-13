@@ -401,6 +401,19 @@ class HomeScreenTest {
     private fun WithSheet(sheet: @Composable () -> Unit) = WithHoldMenu(menuOpen = true, menu = sheet) { Home(weather = sunny) }
 
     @Test
+    fun hideEventsAsksFirst() {
+        render("hide_events_ask_dark", dark = true) {
+            WithHoldMenu(menuOpen = true, menu = { HideEventsSheet({}, {}) }) { Home(agenda = Agenda.Today(events)) }
+        }
+        composeRule.onNodeWithText("Keep them").assertIsDisplayed()
+    }
+
+    @Test
+    fun hideEventsAsksFirstClean() = render("clean_hide_events_ask_200_percent", dark = false, fontScale = 2f) {
+        Clean { WithHoldMenu(menuOpen = true, menu = { HideEventsSheet({}, {}) }) { Home(agenda = Agenda.Today(events)) } }
+    }
+
+    @Test
     fun eventsNextLine() = render("events_next_dark", dark = true) { Home(agenda = Agenda.Today(events)) }
 
     @Test
