@@ -1,6 +1,8 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.runtime.Composable
+import io.github.secnewt.home.apps.WeatherHour
+import io.github.secnewt.home.apps.WeatherNow
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -134,6 +136,7 @@ class HomeScreenTest {
         onStatusTap: () -> Unit = {},
         onVoice: () -> Unit = {},
         status: DeviceStatus = DeviceStatus(battery = 54, connection = Connection.WIFI),
+        weather: WeatherNow? = null,
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -167,9 +170,38 @@ class HomeScreenTest {
         now = 12 * hour,
         time = time,
         onAgendaChoice = onAgendaChoice,
+        weather = weather,
     )
 
     private val hour = 60L * 60 * 1000
+
+    // The weather from Newt Weather: midday with today's high, and the evening with tonight's low.
+    private val sunny = WeatherNow(
+        temperature = 82, highLow = 90, isHigh = true, condition = "PARTLY_CLOUDY", isDaytime = true,
+        description = "Mostly Sunny", warnings = 0, warningEvent = null, updatedAt = 0L,
+    )
+    private val evening = sunny.copy(temperature = 77, highLow = 75, isHigh = false, condition = "CLEAR", isDaytime = false, description = "Clear")
+    private val stormWarning = sunny.copy(
+        temperature = 74, condition = "THUNDERSTORM", description = "Thunderstorms", warnings = 1, warningEvent = "Severe Thunderstorm Warning",
+    )
+    private val hours = listOf(83, 86, 88, 87, 85, 81, 78, 76, 75, 74).mapIndexed { i, t ->
+        WeatherHour(
+            start = (13 + i) * hour,
+            temperature = t,
+            condition = when (i) { 0, 1 -> "PARTLY_CLOUDY"; 2, 3 -> "THUNDERSTORM"; 4 -> "RAIN"; else -> "CLEAR" },
+            isDaytime = i < 5,
+            precipChance = when (i) { 2 -> 60; 3 -> 70; 4 -> 40; else -> 0 },
+        )
+    }
+
+    @Composable
+    private fun HourlySheet(now: WeatherNow = sunny) = WeatherSheet(
+        now = now,
+        hours = hours,
+        time = { "${(it / hour - 1) % 12 + 1} ${if (it / hour < 12) "AM" else "PM"}" },
+        onOpenWeather = {},
+        onDismiss = {},
+    )
     private val time: (Long) -> String = { "${it / hour}:00" }
     private val events = listOf(
         DayEvent(1, "Trash day", 0, 24 * hour, allDay = true, color = 0xFF33B679.toInt()),
@@ -324,6 +356,49 @@ class HomeScreenTest {
             menu = { NewFolderSheet(existingNames = folders.map { it.name }, onCreate = {}, onDismiss = {}) },
         ) { Home() }
     }
+
+    @Test
+    fun weatherDark() {
+        render("weather_dark", dark = true) { Home(weather = sunny, agenda = Agenda.Today(events)) }
+        composeRule.onNodeWithContentDescription("82 degrees, mostly sunny. High 90.").assertIsDisplayed()
+    }
+
+    @Test
+    fun weatherEveningLight() = render("weather_evening_light", dark = false) { Home(weather = evening) }
+
+    @Test
+    fun weatherLargeText() = render("weather_200_percent", dark = true, fontScale = 2f) { Home(weather = sunny, agenda = Agenda.Today(events)) }
+
+    @Test
+    fun weatherWarning() {
+        render("weather_warning_dark", dark = true) { Home(weather = stormWarning) }
+        composeRule.onNodeWithText("Severe Thunderstorm Warning").assertIsDisplayed()
+    }
+
+    @Test
+    fun weatherHourlySheet() = render("weather_hourly_dark", dark = true) { WithSheet { HourlySheet() } }
+
+    @Test
+    fun weatherHourlySheetWarningLight() = render("weather_hourly_warning_light", dark = false) { WithSheet { HourlySheet(stormWarning) } }
+
+    @Test
+    fun weatherHourlySheetLargeText() = render("weather_hourly_200_percent", dark = true, fontScale = 2f) { WithSheet { HourlySheet() } }
+
+    @Test
+    fun cleanWeatherDark() = render("clean_weather_dark", dark = true) {
+        Clean { Home(weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanWeatherLargeText() = render("clean_weather_200_percent", dark = false, fontScale = 2f) {
+        Clean { Home(weather = stormWarning, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanWeatherHourlySheet() = render("clean_weather_hourly_light", dark = false) { Clean { WithSheet { HourlySheet() } } }
+
+    @Composable
+    private fun WithSheet(sheet: @Composable () -> Unit) = WithHoldMenu(menuOpen = true, menu = sheet) { Home(weather = sunny) }
 
     @Test
     fun eventsNextLine() = render("events_next_dark", dark = true) { Home(agenda = Agenda.Today(events)) }

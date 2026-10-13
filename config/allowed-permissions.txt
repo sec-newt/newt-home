@@ -22,6 +22,11 @@ com.android.alarm.permission.SET_ALARM
 # Phone. Signature-level, so Newt Phone grants it only to Newt-signed apps.
 io.github.secnewt.dialer.permission.MISSED_CALL_COUNT
 #
+# The weather by the date: temperatures, conditions and active warnings from
+# Newt Weather, which does the fetching. Signature-level, so Newt Weather grants
+# it only to Newt-signed apps; no ZIP is shared and Newt Home stays offline.
+io.github.secnewt.weather.permission.READ_FORECAST
+#
 # Private space in All apps: Android grants this only to the default home app.
 # Its apps stay hidden while Private space is locked.
 android.permission.ACCESS_HIDDEN_PROFILES
