@@ -61,6 +61,7 @@ import io.github.secnewt.home.apps.ProfileState
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.MissedCalls
+import io.github.secnewt.home.share.LookProvider
 import io.github.secnewt.home.apps.Speaker
 import io.github.secnewt.home.apps.WeatherHour
 import io.github.secnewt.home.apps.WeatherNow
@@ -453,6 +454,8 @@ class MainActivity : ComponentActivity() {
                 val clean = command.clean ?: (look != HomeLook.CLEAN)
                 look = if (clean) HomeLook.CLEAN else HomeLook.TERMINAL
                 store.setLook(look.name)
+                // Newt Weather and Newt Phone follow along.
+                LookProvider.changed(this)
             }
             // Shown by the home screen itself.
             Command.Help, Command.Sys -> Unit
