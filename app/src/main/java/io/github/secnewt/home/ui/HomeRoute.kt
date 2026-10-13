@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.Agenda
+import io.github.secnewt.home.apps.WeatherHour
+import io.github.secnewt.home.apps.WeatherNow
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Command
@@ -86,6 +88,9 @@ fun HomeRoute(
     searchWords: Map<String, List<String>> = emptyMap(),
     onHiddenChange: (Set<String>) -> Unit = {},
     onSearchWordsChange: (Map<String, List<String>>) -> Unit = {},
+    weather: WeatherNow? = null,
+    weatherHours: () -> List<WeatherHour> = { emptyList() },
+    onOpenWeather: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -94,6 +99,8 @@ fun HomeRoute(
     var folderMenuFor by rememberSaveable { mutableStateOf<String?>(null) }
     var newFolder by rememberSaveable { mutableStateOf(false) }
     var agendaOpen by rememberSaveable { mutableStateOf(false) }
+    // The hourly strip, read from Newt Weather when the sheet opens.
+    var hours by remember { mutableStateOf<List<WeatherHour>?>(null) }
     var helpOpen by rememberSaveable { mutableStateOf(false) }
     var addWebsite by rememberSaveable { mutableStateOf(false) }
     var sys by remember { mutableStateOf<SystemInfo?>(null) }
@@ -103,6 +110,7 @@ fun HomeRoute(
         folderMenuFor = null
         newFolder = false
         agendaOpen = false
+        hours = null
         helpOpen = false
         addWebsite = false
         sys = null
@@ -182,7 +190,8 @@ fun HomeRoute(
     }
 
     val today = agenda as? Agenda.Today
-    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null
+    val weatherOpen = hours != null && weather != null
+    val sheetOpen = menuFor != null || folderMenuFor != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen
     // Typing ls is the command for the all-apps screen.
     LaunchedEffect(isList) {
         if (isList) {
@@ -335,6 +344,17 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
             )
+        } else if (weatherOpen) {
+            WeatherSheet(
+                now = weather!!,
+                hours = hours.orEmpty(),
+                time = time,
+                onOpenWeather = {
+                    closeSheets()
+                    onOpenWeather()
+                },
+                onDismiss = ::closeSheets,
+            )
         } else if (sys != null) {
             sys?.let { SysSheet(it, onDismiss = ::closeSheets) }
         } else if (addWebsite) {
@@ -368,7 +388,7 @@ fun HomeRoute(
         }
     }
 
-    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null, menu = menu) {
+    WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen, menu = menu) {
         HomeScreen(
             clock = clock,
             date = date,
@@ -440,6 +460,11 @@ fun HomeRoute(
             onAgendaChoice = onAgendaChoice,
             onFixCalendar = onFixCalendar,
             onDateHold = onDateHold,
+            weather = weather,
+            onWeather = {
+                closeSheets()
+                hours = weatherHours()
+            },
         )
     }
 }

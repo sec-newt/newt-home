@@ -91,6 +91,12 @@ import io.github.secnewt.home.apps.SearchWords
 import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.Websites
 import io.github.secnewt.ui.NewtFonts
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.res.painterResource
+import io.github.secnewt.ui.NewtWeather
+import io.github.secnewt.home.apps.WeatherNow
+import io.github.secnewt.home.apps.WeatherHour
+import io.github.secnewt.home.apps.WeatherText
 
 /**
  * The home screen with a [menu] over it while [menuOpen]. While a menu is open, everything
@@ -1108,5 +1114,114 @@ private fun SysBar(label: String, used: Long, total: Long) {
                     .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))),
             )
         }
+    }
+}
+
+/**
+ * Tapping the weather: the next 24 hours from Newt Weather, scrolled left to right from the
+ * current hour, any active warning at the top, and a way into Newt Weather for the 7-day
+ * forecast. Each hour reads as one sentence to a screen reader.
+ */
+@Composable
+fun WeatherSheet(
+    now: WeatherNow,
+    hours: List<WeatherHour>,
+    time: (Long) -> String,
+    onOpenWeather: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val clean = cleanLook()
+    MenuSheet(onDismiss = onDismiss, header = { SheetTitle(if (clean) "Weather" else "weather --hourly") }) {
+        WeatherText.warning(now)?.let { warning ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Icon(
+                    painterResource(io.github.secnewt.ui.R.drawable.ic_wx_warning),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(26.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(warning, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = MaterialTheme.colorScheme.error)
+            }
+        }
+        Text(
+            listOfNotNull(WeatherText.temperature(now), now.description.ifEmpty { null }, WeatherText.highLow(now))
+                .joinToString(" · "),
+            fontFamily = if (clean) NewtFonts.Body else NewtFonts.Mono,
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .clearAndSetSemantics { contentDescription = WeatherText.spoken(now) },
+        )
+        if (hours.isEmpty()) {
+            Text(
+                "Newt Weather has no hourly forecast yet.",
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 6.dp),
+            ) {
+                hours.forEachIndexed { i, hour -> HourCell(i, hour, time) }
+            }
+        }
+        MenuOption(
+            "Open Newt Weather",
+            "The 7-day forecast, alerts and details",
+            onClick = onOpenWeather,
+            icon = Icons.Filled.DateRange,
+        )
+        SheetButton("Close", onDismiss)
+    }
+}
+
+@Composable
+private fun HourCell(index: Int, hour: WeatherHour, time: (Long) -> String) {
+    val clean = cleanLook()
+    val shape = RoundedCornerShape(14.dp)
+    val font = if (clean) NewtFonts.Body else NewtFonts.Mono
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(84.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(if (index == 0) 2.dp else 1.dp, if (index == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape)
+            .padding(vertical = 10.dp, horizontal = 4.dp)
+            .clearAndSetSemantics {
+                contentDescription = WeatherText.hourSpoken(index, hour, time, NewtWeather.words(hour.condition))
+            },
+    ) {
+        Text(
+            WeatherText.hourLabel(index, time, hour.start),
+            fontFamily = font,
+            fontWeight = if (index == 0) FontWeight.Bold else null,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Icon(
+            painterResource(NewtWeather.icon(hour.condition, hour.isDaytime)),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 6.dp).size(30.dp),
+        )
+        Text("${hour.temperature}°", fontFamily = font, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface)
+        // Chance of rain under each hour; blank (not missing) so the cells line up.
+        Text(
+            hour.precipChance?.takeIf { it > 0 }?.let { "$it%" } ?: " ",
+            fontFamily = font,
+            fontSize = 15.sp,
+            color = NewtWeather.lowColor(),
+        )
     }
 }

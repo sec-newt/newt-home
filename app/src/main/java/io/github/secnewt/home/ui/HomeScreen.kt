@@ -118,6 +118,10 @@ import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
 import io.github.secnewt.ui.NewtFonts
 import kotlin.math.absoluteValue
+import androidx.compose.ui.res.painterResource
+import io.github.secnewt.ui.NewtWeather
+import io.github.secnewt.home.apps.WeatherNow
+import io.github.secnewt.home.apps.WeatherText
 
 /** A folder as the tree shows it: its name and its apps, A–Z. */
 @Immutable
@@ -230,6 +234,8 @@ fun HomeScreen(
     onToggleProfileLock: (ProfileKind) -> Unit = {},
     onStatusTap: () -> Unit = {},
     onVoice: () -> Unit = {},
+    weather: WeatherNow? = null,
+    onWeather: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -265,6 +271,7 @@ fun HomeScreen(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
+                            weather, onWeather,
                         )
                     }
                 }
@@ -307,6 +314,8 @@ private fun HomePage(
     onDateHold: () -> Unit,
     isHidden: (LauncherApp) -> Boolean,
     onVoice: () -> Unit,
+    weather: WeatherNow?,
+    onWeather: () -> Unit,
 ) {
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
@@ -328,7 +337,9 @@ private fun HomePage(
                                 onDate,
                                 dateLabel = if (agenda is Agenda.Today) "Today's events" else "Open Calendar",
                                 onDateHold = onDateHold,
+                                weather = weather?.let { w -> { WeatherLine(w, onWeather) } },
                             )
+                            weather?.let { WarningLine(it, onWeather) }
                             AgendaLine(agenda, now, time, onDate, onAgendaChoice, onFixCalendar)
                         }
                     }
@@ -957,9 +968,10 @@ private fun ClockAndDate(
     modifier: Modifier = Modifier,
     dateLabel: String = "Open Calendar",
     onDateHold: () -> Unit = {},
+    weather: (@Composable () -> Unit)? = null,
 ) {
     if (cleanLook()) {
-        CleanClockAndDate(clock, date, onClock, onDate, modifier, dateLabel, onDateHold)
+        CleanClockAndDate(clock, date, onClock, onDate, modifier, dateLabel, onDateHold, weather)
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -982,6 +994,8 @@ private fun ClockAndDate(
             )
         }
         Spacer(Modifier.width(8.dp))
+        // The date, with the weather under it when Newt Weather is sharing.
+        Column {
         Box(
             Modifier
                 .heightIn(min = 48.dp)
@@ -998,6 +1012,8 @@ private fun ClockAndDate(
         ) {
             Text(date, fontFamily = NewtFonts.Mono, fontSize = 20.sp, color = MaterialTheme.colorScheme.tertiary)
         }
+        weather?.invoke()
+        }
     }
 }
 
@@ -1012,6 +1028,7 @@ private fun CleanClockAndDate(
     modifier: Modifier,
     dateLabel: String,
     onDateHold: () -> Unit,
+    weather: (@Composable () -> Unit)?,
 ) {
     Column(modifier) {
         Box(
@@ -1039,6 +1056,78 @@ private fun CleanClockAndDate(
         ) {
             Text(date, fontFamily = NewtFonts.Body, fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        weather?.invoke()
+    }
+}
+
+/**
+ * The weather by the date: an icon, the temperature now, and today's high (↑, warm) or
+ * tonight's low (↓, cool). Tapping it opens the hourly strip. Reads as one sentence.
+ */
+@Composable
+private fun WeatherLine(weather: WeatherNow, onClick: () -> Unit) {
+    val clean = cleanLook()
+    val font = if (clean) NewtFonts.Body else NewtFonts.Mono
+    val size = if (clean) 22.sp else 20.sp
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = "Hourly forecast", onClick = onClick)
+            .semantics { contentDescription = WeatherText.spoken(weather) }
+            .padding(horizontal = 4.dp),
+    ) {
+        Icon(
+            painterResource(NewtWeather.icon(weather.condition, weather.isDaytime)),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(if (clean) 30.dp else 26.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            WeatherText.temperature(weather),
+            fontFamily = font,
+            fontSize = size,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.clearAndSetSemantics { },
+        )
+        WeatherText.highLow(weather)?.let {
+            Spacer(Modifier.width(10.dp))
+            Text(
+                it,
+                fontFamily = font,
+                fontSize = size,
+                fontWeight = FontWeight.Bold,
+                color = if (weather.isHigh) NewtWeather.highColor() else NewtWeather.lowColor(),
+                modifier = Modifier.clearAndSetSemantics { },
+            )
+        }
+    }
+}
+
+/** An active NOAA Warning, in the warning red under the clock; it opens the hourly sheet too. */
+@Composable
+private fun WarningLine(weather: WeatherNow, onClick: () -> Unit) {
+    val text = WeatherText.warning(weather) ?: return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = "Weather details", onClick = onClick)
+            .padding(horizontal = 4.dp),
+    ) {
+        Icon(
+            painterResource(io.github.secnewt.ui.R.drawable.ic_wx_warning),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, fontFamily = rowFont(), fontSize = if (cleanLook()) 19.sp else 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
     }
 }
 
