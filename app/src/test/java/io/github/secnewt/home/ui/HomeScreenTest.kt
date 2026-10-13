@@ -40,7 +40,7 @@ import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
-import io.github.secnewt.home.ui.theme.NewtTheme
+import io.github.secnewt.home.ui.theme.HomeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -82,7 +82,7 @@ class HomeScreenTest {
         composeRule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                NewtTheme(darkTheme = dark) { content() }
+                HomeTheme(darkTheme = dark) { content() }
             }
         }
         before()
@@ -356,7 +356,7 @@ class HomeScreenTest {
     fun eventsOfferAnswers() {
         var choice: Boolean? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { Home(agenda = Agenda.Offer, onAgendaChoice = { choice = it }) }
+            HomeTheme(darkTheme = true) { Home(agenda = Agenda.Offer, onAgendaChoice = { choice = it }) }
         }
         composeRule.onNodeWithContentDescription("Yes, show today's events").performClick()
         assertEquals(true, choice)
@@ -366,7 +366,7 @@ class HomeScreenTest {
 
     @Test
     fun eventsLineShowsTheNextEvent() {
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
         composeRule.onNodeWithText("next: 15:00 Dentist · 2 more today").assertIsDisplayed()
     }
 
@@ -402,7 +402,7 @@ class HomeScreenTest {
     fun tappingAReadyCommandRunsIt() {
         var ran = 0
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 Home(
                     view = commandResults("flashlight", "switch the flashlight on or off", ready = true),
                     query = "flashlight",
@@ -497,7 +497,7 @@ class HomeScreenTest {
 
     @Test
     fun pickingALetterListsOnlyItsApps() {
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
         composeRule.onNodeWithContentDescription("Letter grid").performClick()
         composeRule.onNodeWithContentDescription("S, 3 apps").performClick()
         composeRule.onNodeWithText("Signal").assertIsDisplayed()
@@ -530,7 +530,7 @@ class HomeScreenTest {
 
     @Test
     fun shortcutsSayWhereTheyCameFrom() {
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
         scrollAllAppsTo("Vanadium shortcut")
         composeRule.onNodeWithText("Vanadium shortcut").assertIsDisplayed()
     }
@@ -554,7 +554,7 @@ class HomeScreenTest {
     fun addingAWebsiteChecksTheAddress() {
         var added: Pair<String, String>? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { AddWebsiteSheet(onAdd = { n, u -> added = n to u }, onDismiss = {}) }
+            HomeTheme(darkTheme = true) { AddWebsiteSheet(onAdd = { n, u -> added = n to u }, onDismiss = {}) }
         }
         composeRule.onNodeWithText("Add website").performClick()
         composeRule.onNodeWithText("Type the site's address first.").assertIsDisplayed()
@@ -569,7 +569,7 @@ class HomeScreenTest {
 
     @Test
     fun websitesShowTheirAddress() {
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(screen = Screen.APPS) } }
         composeRule.onNodeWithText("website · bank.example").assertIsDisplayed()
     }
 
@@ -609,7 +609,7 @@ class HomeScreenTest {
     @Test
     fun tappingAnAppShortcutOpensIt() {
         var opened: AppShortcut? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { SignalMenu { opened = it } } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { SignalMenu { opened = it } } }
         composeRule.onNodeWithText("Sam").performClick()
         assertEquals("chat-sam", opened?.id)
     }
@@ -644,7 +644,7 @@ class HomeScreenTest {
     fun unlockingAPrivateSpaceAsks() {
         var toggled: ProfileKind? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, profiles = workAndPrivate, onToggleProfileLock = { toggled = it }) }
+            HomeTheme(darkTheme = true) { Home(screen = Screen.APPS, profiles = workAndPrivate, onToggleProfileLock = { toggled = it }) }
         }
         scrollAllAppsTo("Unlock")
         composeRule.onNodeWithText("Unlock").performClick()
@@ -680,7 +680,7 @@ class HomeScreenTest {
     @Test
     fun tappingTheStatusLineOpensSystemInfo() {
         var tapped = false
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(onStatusTap = { tapped = true }) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(onStatusTap = { tapped = true }) } }
         composeRule.onNodeWithContentDescription("Battery 54 percent, on Wi-Fi").performClick()
         assertEquals(true, tapped)
     }
@@ -688,7 +688,7 @@ class HomeScreenTest {
     @Test
     fun theMicAsksForVoiceInput() {
         var asked = false
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(onVoice = { asked = true }) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(onVoice = { asked = true }) } }
         composeRule.onNodeWithContentDescription("Speak instead of typing").performClick()
         assertEquals(true, asked)
     }
@@ -803,7 +803,7 @@ class HomeScreenTest {
     @Test
     fun cleanShortcutButtonsOpenShortcuts() {
         var opened: AppShortcut? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { Clean { SignalMenu { opened = it } } } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { SignalMenu { opened = it } } } }
         composeRule.onNodeWithText("Sam").performClick()
         assertEquals(signalShortcuts.first { it.label == "Sam" }, opened)
     }
@@ -830,7 +830,7 @@ class HomeScreenTest {
 
     @Test
     fun cleanLookUsesWords() {
-        composeRule.setContent { NewtTheme(darkTheme = true) { Clean { Home() } } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { Home() } } }
         // A heading in place of the `~$ ls favs` line, and the search field's own wording.
         composeRule.onNodeWithText("Favorites").assertExists()
         composeRule.onNodeWithText("Search, or type help", useUnmergedTree = true).assertExists()
@@ -840,7 +840,7 @@ class HomeScreenTest {
     fun theCommandsSheetSwitchesTheLook() {
         var switched = false
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = { switched = true }) }) { Home() }
             }
         }
@@ -851,7 +851,7 @@ class HomeScreenTest {
     @Test
     fun swipingDownClosesAllApps() {
         var went: Screen? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) } }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) } }
         composeRule.onNodeWithTag(ALL_APPS_LIST).performTouchInput { swipeDown() }
         assertEquals(Screen.HOME, went)
     }
@@ -860,7 +860,7 @@ class HomeScreenTest {
     fun swipingDownClosesASheet() {
         var closed = false
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = { closed = true }) }) { Home() }
             }
         }
@@ -874,7 +874,7 @@ class HomeScreenTest {
         var opened: LauncherApp? = null
         var went: Screen? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { Home(onOpen = { opened = it }, onScreen = { went = it }) }
+            HomeTheme(darkTheme = true) { Home(onOpen = { opened = it }, onScreen = { went = it }) }
         }
         composeRule.onNodeWithText("Signal").assertIsDisplayed().performClick()
         assertEquals("Signal", opened?.name)
@@ -890,7 +890,7 @@ class HomeScreenTest {
         var toggled: String? = null
         var went: Screen? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 Home(
                     screen = Screen.FOLDERS,
                     onOpen = { opened = it },
@@ -911,7 +911,7 @@ class HomeScreenTest {
     fun allAppsListsEveryApp() {
         var went: Screen? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) }
+            HomeTheme(darkTheme = true) { Home(screen = Screen.APPS, onScreen = { went = it }) }
         }
         composeRule.onNodeWithText("Camera").assertIsDisplayed()
         composeRule.onNodeWithText("Magnifier").assertIsDisplayed()
@@ -922,7 +922,7 @@ class HomeScreenTest {
     @Test
     fun bootTypeOutEndsWithTheClockShowing() {
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 HomeScreen(
                     clock = "13:22",
                     date = "Fri, Oct 9",
@@ -956,7 +956,7 @@ class HomeScreenTest {
     fun newFolderNeedsAName() {
         var made: String? = null
         composeRule.setContent {
-            NewtTheme(darkTheme = true) {
+            HomeTheme(darkTheme = true) {
                 NewFolderSheet(existingNames = listOf("Games"), onCreate = { made = it }, onDismiss = {})
             }
         }

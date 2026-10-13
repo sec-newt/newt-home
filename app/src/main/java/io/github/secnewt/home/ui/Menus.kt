@@ -90,7 +90,7 @@ import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.apps.SearchWords
 import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.Websites
-import io.github.secnewt.home.ui.theme.NewtFonts
+import io.github.secnewt.ui.NewtFonts
 
 /**
  * The home screen with a [menu] over it while [menuOpen]. While a menu is open, everything

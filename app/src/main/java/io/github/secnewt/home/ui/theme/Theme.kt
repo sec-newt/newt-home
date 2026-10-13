@@ -1,108 +1,12 @@
 package io.github.secnewt.home.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
-import androidx.compose.ui.text.font.FontWeight
-import io.github.secnewt.home.R
-
-/**
- * Fonts, all bundled (no downloads), the same as Newt Phone:
- * Chakra Petch for titles, Atkinson Hyperlegible (designed for low vision) for reading,
- * and JetBrains Mono, which carries the terminal look of the home screen.
- */
-object NewtFonts {
-    val Display = FontFamily(
-        Font(R.font.chakra_semibold, FontWeight.SemiBold),
-        Font(R.font.chakra_bold, FontWeight.Bold),
-    )
-    val Body = FontFamily(
-        Font(R.font.atkinson_regular, FontWeight.Normal),
-        Font(R.font.atkinson_bold, FontWeight.Bold),
-    )
-    val Mono = FontFamily(
-        Font(
-            R.font.jetbrains_mono,
-            FontWeight.Medium,
-            variationSettings = FontVariation.Settings(FontVariation.weight(500)),
-        ),
-        Font(
-            R.font.jetbrains_mono,
-            FontWeight.Bold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(700)),
-        ),
-    )
-}
-
-// Tokyo Night on true black, copied from Newt Phone. Text and accents stay at or above 7:1
-// against the background; neon is for outlines and highlights, never behind text you read.
-private val Night = darkColorScheme(
-    primary = Color(0xFF85ABF8),
-    onPrimary = Color(0xFF0B0C14),
-    primaryContainer = Color(0xFF253055),
-    onPrimaryContainer = Color(0xFFDCE3FF),
-    secondary = Color(0xFFBB9AF7),
-    onSecondary = Color(0xFF14091F),
-    secondaryContainer = Color(0xFF2E2552),
-    onSecondaryContainer = Color(0xFFEDE4FF),
-    tertiary = Color(0xFF7DCFFF),
-    onTertiary = Color(0xFF041520),
-    background = Color(0xFF050608),
-    onBackground = Color(0xFFE2E6FF),
-    surface = Color(0xFF050608),
-    onSurface = Color(0xFFE2E6FF),
-    surfaceVariant = Color(0xFF161925),
-    onSurfaceVariant = Color(0xFFB4BBDD),
-    surfaceContainerLowest = Color(0xFF050608),
-    surfaceContainerLow = Color(0xFF0E1018),
-    surfaceContainer = Color(0xFF12141E),
-    surfaceContainerHigh = Color(0xFF161925),
-    surfaceContainerHighest = Color(0xFF1C2030),
-    outline = Color(0xFF565F89),
-    outlineVariant = Color(0xFF2A2F45),
-    error = Color(0xFFFF7A93),
-    onError = Color(0xFF1F0610),
-)
-
-// Tokyo Night Day, for when the phone is in light mode.
-private val Day = lightColorScheme(
-    primary = Color(0xFF1A43A3),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCE3FF),
-    onPrimaryContainer = Color(0xFF0B1B4A),
-    secondary = Color(0xFF5E33B0),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE6DCFF),
-    onSecondaryContainer = Color(0xFF1E0A45),
-    tertiary = Color(0xFF00597A),
-    onTertiary = Color.White,
-    background = Color.White,
-    onBackground = Color(0xFF1A1B26),
-    surface = Color.White,
-    onSurface = Color(0xFF1A1B26),
-    surfaceVariant = Color(0xFFECEEF6),
-    onSurfaceVariant = Color(0xFF2F3549),
-    surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF6F7FB),
-    surfaceContainer = Color(0xFFF0F2F8),
-    surfaceContainerHigh = Color(0xFFECEEF6),
-    surfaceContainerHighest = Color(0xFFE4E7F1),
-    outline = Color(0xFF6B7194),
-    outlineVariant = Color(0xFFCDD1E3),
-    error = Color(0xFF94102A),
-    onError = Color.White,
-)
+import io.github.secnewt.ui.NewtTheme
 
 /**
  * Colors Material has no slot for: the green `~$` prompt (also "good", like a full battery)
@@ -116,42 +20,13 @@ private val DayTerminal = TerminalColors(prompt = Color(0xFF2D5A0A), warn = Colo
 
 val LocalTerminalColors = staticCompositionLocalOf { NightTerminal }
 
-private val Base = Typography()
-
-/** Reading text a touch smaller than Material's defaults, on top of the phone's own font size. */
-private const val TEXT_SCALE = 0.92f
-
-private fun TextStyle.scaled(family: FontFamily) =
-    copy(fontFamily = family, fontSize = fontSize * TEXT_SCALE, lineHeight = lineHeight * TEXT_SCALE)
-
-private val NewtTypography = Typography(
-    displayLarge = Base.displayLarge.copy(fontFamily = NewtFonts.Display),
-    displayMedium = Base.displayMedium.copy(fontFamily = NewtFonts.Display),
-    displaySmall = Base.displaySmall.copy(fontFamily = NewtFonts.Display),
-    headlineLarge = Base.headlineLarge.copy(fontFamily = NewtFonts.Display),
-    headlineMedium = Base.headlineMedium.copy(fontFamily = NewtFonts.Display),
-    headlineSmall = Base.headlineSmall.copy(fontFamily = NewtFonts.Display),
-    titleLarge = Base.titleLarge.scaled(NewtFonts.Body),
-    titleMedium = Base.titleMedium.scaled(NewtFonts.Body),
-    titleSmall = Base.titleSmall.scaled(NewtFonts.Body),
-    bodyLarge = Base.bodyLarge.scaled(NewtFonts.Body),
-    bodyMedium = Base.bodyMedium.scaled(NewtFonts.Body),
-    bodySmall = Base.bodySmall.scaled(NewtFonts.Body),
-    labelLarge = Base.labelLarge.scaled(NewtFonts.Body),
-    labelMedium = Base.labelMedium.scaled(NewtFonts.Body),
-    labelSmall = Base.labelSmall.scaled(NewtFonts.Body),
-)
-
+/** The shared Newt look (from the Newt library), plus Newt Home's terminal colors. */
 @Composable
-fun NewtTheme(
+fun HomeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(LocalTerminalColors provides if (darkTheme) NightTerminal else DayTerminal) {
-        MaterialTheme(
-            colorScheme = if (darkTheme) Night else Day,
-            typography = NewtTypography,
-            content = content,
-        )
+        NewtTheme(darkTheme = darkTheme, content = content)
     }
 }

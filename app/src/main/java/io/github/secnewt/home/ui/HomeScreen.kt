@@ -116,7 +116,7 @@ import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
-import io.github.secnewt.home.ui.theme.NewtFonts
+import io.github.secnewt.ui.NewtFonts
 import kotlin.math.absoluteValue
 
 /** A folder as the tree shows it: its name and its apps, A–Z. */
