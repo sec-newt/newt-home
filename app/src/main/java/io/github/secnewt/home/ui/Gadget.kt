@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.res.ResourcesCompat
-import io.github.secnewt.home.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -45,7 +44,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
-import io.github.secnewt.home.ui.theme.NewtFonts
+import io.github.secnewt.ui.NewtFonts
 import kotlinx.coroutines.delay
 
 /*
@@ -82,7 +81,7 @@ private val ASCII_NEWT = """
  * background newt bright; a picture is left alone. Drawn in white; tinted when shown.
  */
 private fun renderNewt(context: Context, density: Float): ImageBitmap {
-    val font = ResourcesCompat.getFont(context, R.font.jetbrains_mono)
+    val font = ResourcesCompat.getFont(context, io.github.secnewt.ui.R.font.jetbrains_mono)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.create(font, 700, false)
         textSize = 19f * density

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.font.FontFamily
-import io.github.secnewt.home.ui.theme.NewtFonts
+import io.github.secnewt.ui.NewtFonts
 
 /**
  * How the home screen looks. Both have every feature; only the dressing differs.

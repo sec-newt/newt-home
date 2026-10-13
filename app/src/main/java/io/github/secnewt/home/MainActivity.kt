@@ -67,7 +67,7 @@ import java.util.UUID
 import io.github.secnewt.home.ui.HomeRoute
 import io.github.secnewt.home.ui.HomeLook
 import io.github.secnewt.home.ui.LocalHomeLook
-import io.github.secnewt.home.ui.theme.NewtTheme
+import io.github.secnewt.home.ui.theme.HomeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -194,7 +194,7 @@ class MainActivity : ComponentActivity() {
         reload()
 
         setContent {
-            NewtTheme {
+            HomeTheme {
                 CompositionLocalProvider(LocalHomeLook provides look) {
                     HomeRoute(
                         // Private space apps stay out of search, favorites and folders.

@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import io.github.secnewt.home.ui.PinShortcutSheet
-import io.github.secnewt.home.ui.theme.NewtTheme
+import io.github.secnewt.home.ui.theme.HomeTheme
 
 /**
  * Android opens this when an app asks to pin a shortcut to the home screen, like a browser's
@@ -35,7 +35,7 @@ class PinShortcutActivity : ComponentActivity() {
             shortcut.`package`
         }
         setContent {
-            NewtTheme {
+            HomeTheme {
                 PinShortcutSheet(
                     name = name,
                     from = from,
