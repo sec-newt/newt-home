@@ -35,6 +35,10 @@
     <!-- Lets the app see apps that can be opened from a home screen, and nothing else
          (instead of the much broader "see every installed app" permission). -->
     <queries>
+        <!-- Lets "Hear the weather" find the phone's text-to-speech voice (no permission). -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
         <!-- Newt Phone's missed-call count (see above), and no other app's data. -->
         <provider android:authorities="io.github.secnewt.dialer.missedcalls" />
         <!-- Newt Weather's forecast (see above), and no other app's data. -->

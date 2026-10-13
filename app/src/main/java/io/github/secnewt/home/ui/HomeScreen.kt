@@ -236,6 +236,8 @@ fun HomeScreen(
     onVoice: () -> Unit = {},
     weather: WeatherNow? = null,
     onWeather: () -> Unit = {},
+    headsUp: String? = null,
+    onHearWeather: () -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -271,7 +273,7 @@ fun HomeScreen(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
-                            weather, onWeather,
+                            weather, onWeather, headsUp, onHearWeather,
                         )
                     }
                 }
@@ -316,6 +318,8 @@ private fun HomePage(
     onVoice: () -> Unit,
     weather: WeatherNow?,
     onWeather: () -> Unit,
+    headsUp: String?,
+    onHearWeather: () -> Unit,
 ) {
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
@@ -337,9 +341,10 @@ private fun HomePage(
                                 onDate,
                                 dateLabel = if (agenda is Agenda.Today) "Today's events" else "Open Calendar",
                                 onDateHold = onDateHold,
-                                weather = weather?.let { w -> { WeatherLine(w, onWeather) } },
+                                weather = weather?.let { w -> { WeatherLine(w, onWeather, onHearWeather) } },
                             )
                             weather?.let { WarningLine(it, onWeather) }
+                            if (weather != null && headsUp != null) HeadsUpLine(headsUp, onWeather)
                             AgendaLine(agenda, now, time, onDate, onAgendaChoice, onFixCalendar)
                         }
                     }
@@ -1064,8 +1069,9 @@ private fun CleanClockAndDate(
  * The weather by the date: an icon, the temperature now, and today's high (↑, warm) or
  * tonight's low (↓, cool). Tapping it opens the hourly strip. Reads as one sentence.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WeatherLine(weather: WeatherNow, onClick: () -> Unit) {
+private fun WeatherLine(weather: WeatherNow, onClick: () -> Unit, onHear: () -> Unit) {
     val clean = cleanLook()
     val font = if (clean) NewtFonts.Body else NewtFonts.Mono
     val size = if (clean) 22.sp else 20.sp
@@ -1074,7 +1080,12 @@ private fun WeatherLine(weather: WeatherNow, onClick: () -> Unit) {
         modifier = Modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(10.dp))
-            .clickable(onClickLabel = "Hourly forecast", onClick = onClick)
+            .combinedClickable(
+                onClickLabel = "Hourly forecast",
+                onLongClickLabel = "Hear the weather",
+                onLongClick = onHear,
+                onClick = onClick,
+            )
             .semantics { contentDescription = WeatherText.spoken(weather) }
             .padding(horizontal = 4.dp),
     ) {
@@ -1104,6 +1115,36 @@ private fun WeatherLine(weather: WeatherNow, onClick: () -> Unit) {
                 modifier = Modifier.clearAndSetSemantics { },
             )
         }
+    }
+}
+
+/** "Rain likely around 3 PM": a heads-up from the hourly forecast. Opens the hourly strip. */
+@Composable
+private fun HeadsUpLine(text: String, onClick: () -> Unit) {
+    val clean = cleanLook()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClickLabel = "Hourly forecast", onClick = onClick)
+            .padding(horizontal = 4.dp),
+    ) {
+        Icon(
+            painterResource(NewtWeather.icon("RAIN", true)),
+            contentDescription = null,
+            tint = NewtWeather.lowColor(),
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            if (clean) text else text.lowercase(),
+            fontFamily = rowFont(),
+            fontSize = if (clean) 19.sp else 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = NewtWeather.lowColor(),
+        )
     }
 }
 

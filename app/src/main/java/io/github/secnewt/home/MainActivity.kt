@@ -61,6 +61,7 @@ import io.github.secnewt.home.apps.ProfileState
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.MissedCalls
+import io.github.secnewt.home.apps.Speaker
 import io.github.secnewt.home.apps.WeatherHour
 import io.github.secnewt.home.apps.WeatherNow
 import io.github.secnewt.home.apps.Weather
@@ -117,6 +118,7 @@ class MainActivity : ComponentActivity() {
     private var weatherNow by mutableStateOf<WeatherNow?>(null)
     private var weatherHours by mutableStateOf<List<WeatherHour>>(emptyList())
     private lateinit var weather: Weather
+    private val speaker by lazy { Speaker(this) }
     private val weatherChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = refreshWeather()
     }
@@ -268,6 +270,7 @@ class MainActivity : ComponentActivity() {
                         weather = weatherNow,
                         weatherHours = { weatherHours },
                         onOpenWeather = ::openWeather,
+                        onSpeak = { speaker.say(it) },
                     )
                 }
             }
@@ -323,6 +326,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        speaker.release()
         launcherApps.unregisterCallback(packageChanges)
         unregisterReceiver(profileChanges)
         cameras.unregisterTorchCallback(torchChanges)

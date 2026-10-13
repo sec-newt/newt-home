@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import io.github.secnewt.home.apps.Agenda
+import io.github.secnewt.home.apps.WeatherText
 import io.github.secnewt.home.apps.WeatherHour
 import io.github.secnewt.home.apps.WeatherNow
 import io.github.secnewt.home.apps.AppSearch
@@ -91,6 +92,7 @@ fun HomeRoute(
     weather: WeatherNow? = null,
     weatherHours: () -> List<WeatherHour> = { emptyList() },
     onOpenWeather: () -> Unit = {},
+    onSpeak: (String) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -363,6 +365,8 @@ fun HomeRoute(
                     closeSheets()
                     onOpenWeather()
                 },
+                onHear = { onSpeak(WeatherText.spokenWithHeadsUp(weather!!, hours.orEmpty(), time)) },
+                headsUp = WeatherText.headsUp(hours.orEmpty(), time),
                 onDismiss = ::closeSheets,
             )
         } else if (sys != null) {
@@ -484,6 +488,8 @@ fun HomeRoute(
                 closeSheets()
                 hours = weatherHours()
             },
+            headsUp = WeatherText.headsUp(weatherHours(), time),
+            onHearWeather = { weather?.let { onSpeak(WeatherText.spokenWithHeadsUp(it, weatherHours(), time)) } },
         )
     }
 }
