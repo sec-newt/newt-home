@@ -1225,3 +1225,21 @@ private fun HourCell(index: Int, hour: WeatherHour, time: (Long) -> String) {
         )
     }
 }
+
+/**
+ * Pressing and holding the date while events show. Hiding them used to happen at once, and an
+ * accidental hold left the line gone with nothing to say why; now it asks first.
+ */
+@Composable
+fun HideEventsSheet(onHide: () -> Unit, onKeep: () -> Unit) {
+    MenuSheet(onDismiss = onKeep, header = { SheetTitle("Hide today's events?") }) {
+        MenuOption(
+            "Hide events",
+            "They leave the home screen. Press and hold the date to bring them back.",
+            onClick = onHide,
+            danger = true,
+            icon = Icons.Filled.Close,
+        )
+        SheetButton("Keep them", onKeep)
+    }
+}
