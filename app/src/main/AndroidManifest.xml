@@ -34,6 +34,15 @@
 
     <!-- Lets the app see apps that can be opened from a home screen, and nothing else
          (instead of the much broader "see every installed app" permission). -->
+    <!-- Lets other apps signed with the Newt key (Newt Weather, Newt Phone) read whether the look is
+         terminal or clean, so the family switches together. "signature" means Android grants it
+         to no other app, and nobody is ever asked. -->
+    <permission
+        android:name="${applicationId}.permission.READ_LOOK"
+        android:label="@string/read_look_permission"
+        android:description="@string/read_look_permission_description"
+        android:protectionLevel="signature" />
+
     <queries>
         <!-- Lets "Hear the weather" find the phone's text-to-speech voice (no permission). -->
         <intent>
@@ -91,6 +100,14 @@
                 <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
             </intent-filter>
         </activity>
+
+        <!-- The look for other Newt apps (see the permission above). Read-only. -->
+        <provider
+            android:name=".share.LookProvider"
+            android:authorities="${applicationId}.look"
+            android:exported="true"
+            android:readPermission="${applicationId}.permission.READ_LOOK"
+            android:writePermission="${applicationId}.permission.READ_LOOK" />
     </application>
 
 </manifest>
