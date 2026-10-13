@@ -137,6 +137,7 @@ class HomeScreenTest {
         onVoice: () -> Unit = {},
         status: DeviceStatus = DeviceStatus(battery = 54, connection = Connection.WIFI),
         weather: WeatherNow? = null,
+        headsUp: String? = null,
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -171,6 +172,7 @@ class HomeScreenTest {
         time = time,
         onAgendaChoice = onAgendaChoice,
         weather = weather,
+        headsUp = headsUp,
     )
 
     private val hour = 60L * 60 * 1000
@@ -201,6 +203,7 @@ class HomeScreenTest {
         time = { "${(it / hour - 1) % 12 + 1} ${if (it / hour < 12) "AM" else "PM"}" },
         onOpenWeather = {},
         onDismiss = {},
+        headsUp = "Storms likely around 3 PM",
     )
     private val time: (Long) -> String = { "${it / hour}:00" }
     private val events = listOf(
@@ -373,6 +376,17 @@ class HomeScreenTest {
     fun weatherWarning() {
         render("weather_warning_dark", dark = true) { Home(weather = stormWarning) }
         composeRule.onNodeWithText("Severe Thunderstorm Warning").assertIsDisplayed()
+    }
+
+    @Test
+    fun weatherRainHeadsUp() {
+        render("weather_heads_up_dark", dark = true) { Home(weather = sunny, headsUp = "Storms likely around 3 PM") }
+        composeRule.onNodeWithText("storms likely around 3 pm").assertIsDisplayed()
+    }
+
+    @Test
+    fun cleanWeatherRainHeadsUpLight() = render("clean_weather_heads_up_light", dark = false) {
+        Clean { Home(weather = sunny, headsUp = "Storms likely around 3 PM", agenda = Agenda.Today(events)) }
     }
 
     @Test

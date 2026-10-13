@@ -48,6 +48,33 @@ class WeatherTest {
         assertFalse(WeatherText.fresh(noon, 13 * hour))
     }
 
+    private fun hourAt(i: Int, chance: Int, condition: String = "RAIN") =
+        WeatherHour(start = (13 + i) * hour, temperature = 80, condition = condition, isDaytime = true, precipChance = chance)
+    private val clock: (Long) -> String = { "${(it / hour - 1) % 12 + 1} PM" }
+
+    @Test
+    fun headsUpWhenRainIsLikelySoon() {
+        val hours = listOf(hourAt(0, 10), hourAt(1, 20), hourAt(2, 60), hourAt(3, 70))
+        assertEquals("Rain likely around 3 PM", WeatherText.headsUp(hours, clock))
+        assertEquals("Storms likely around 3 PM", WeatherText.headsUp(hours.map { it.copy(condition = "THUNDERSTORM") }, clock))
+    }
+
+    @Test
+    fun headsUpWhenItsRainingNow() = assertEquals("Rain now", WeatherText.headsUp(listOf(hourAt(0, 80)), clock))
+
+    @Test
+    fun noHeadsUpForAChanceOrLaterRain() {
+        assertNull(WeatherText.headsUp(listOf(hourAt(0, 30), hourAt(1, 40)), clock))
+        val late = List(8) { hourAt(it, 0) } + hourAt(8, 90)
+        assertNull(WeatherText.headsUp(late, clock)) // more than 8 hours away
+    }
+
+    @Test
+    fun hearTheWeatherIncludesTheHeadsUp() = assertEquals(
+        "82 degrees, mostly sunny. High 90. Rain likely around 3 PM.",
+        WeatherText.spokenWithHeadsUp(noon, listOf(hourAt(0, 0), hourAt(1, 0), hourAt(2, 60)), clock),
+    )
+
     @Test
     fun hourlyLabelsAndWords() {
         val h = WeatherHour(start = 14 * hour, temperature = 88, condition = "RAIN", isDaytime = true, precipChance = 40)

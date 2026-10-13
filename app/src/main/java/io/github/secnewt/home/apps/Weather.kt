@@ -126,6 +126,33 @@ object WeatherText {
         else -> "${now.warningEvent ?: "Weather warning"} +${now.warnings - 1}"
     }
 
+    /** Rain or snow at least this likely counts (NOAA says "likely" from about 60%). */
+    const val LIKELY = 50
+
+    /** How far ahead the heads-up looks. */
+    const val HEADS_UP_HOURS = 8
+
+    /**
+     * A heads-up when rain is likely soon: "Rain now", "Rain likely around 3 PM" or "Storms
+     * likely around 4 PM". Null when nothing likely is coming in the next [HEADS_UP_HOURS].
+     * Snow counts as "Snow"; the first likely hour decides.
+     */
+    fun headsUp(hours: List<WeatherHour>, time: (Long) -> String): String? {
+        val index = hours.take(HEADS_UP_HOURS).indexOfFirst { (it.precipChance ?: 0) >= LIKELY }
+        if (index < 0) return null
+        val hour = hours[index]
+        val what = when (hour.condition) {
+            "THUNDERSTORM" -> "Storms"
+            "SNOW" -> "Snow"
+            else -> "Rain"
+        }
+        return if (index == 0) "$what now" else "$what likely around ${time(hour.start)}"
+    }
+
+    /** What "Hear the weather" says: the sentence plus the heads-up. */
+    fun spokenWithHeadsUp(now: WeatherNow, hours: List<WeatherHour>, time: (Long) -> String): String =
+        listOfNotNull(spoken(now), headsUp(hours, time)?.let { "$it." }).joinToString(" ")
+
     /** "Now" for the current hour, then the hour by itself ("2 PM"). */
     fun hourLabel(index: Int, time: (Long) -> String, start: Long): String = if (index == 0) "Now" else time(start)
 

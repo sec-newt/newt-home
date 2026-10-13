@@ -1129,6 +1129,8 @@ fun WeatherSheet(
     time: (Long) -> String,
     onOpenWeather: () -> Unit,
     onDismiss: () -> Unit,
+    onHear: () -> Unit = {},
+    headsUp: String? = null,
 ) {
     val clean = cleanLook()
     MenuSheet(onDismiss = onDismiss, header = { SheetTitle(if (clean) "Weather" else "weather --hourly") }) {
@@ -1157,6 +1159,16 @@ fun WeatherSheet(
                 .padding(horizontal = 10.dp, vertical = 6.dp)
                 .clearAndSetSemantics { contentDescription = WeatherText.spoken(now) },
         )
+        headsUp?.let {
+            Text(
+                it,
+                fontFamily = if (clean) NewtFonts.Body else NewtFonts.Mono,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = NewtWeather.lowColor(),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+            )
+        }
         if (hours.isEmpty()) {
             Text(
                 "Newt Weather has no hourly forecast yet.",
@@ -1175,6 +1187,12 @@ fun WeatherSheet(
                 hours.forEachIndexed { i, hour -> HourCell(i, hour, time) }
             }
         }
+        MenuOption(
+            "Hear the weather",
+            "Says it out loud with your phone's voice. Pressing and holding the weather does too.",
+            onClick = onHear,
+            icon = Icons.Filled.Info,
+        )
         MenuOption(
             "Open Newt Weather",
             "The 7-day forecast, alerts and details",
