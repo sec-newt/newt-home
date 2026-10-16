@@ -66,6 +66,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -193,7 +194,9 @@ private fun rememberEdgePull(up: Boolean, onPull: () -> Unit): NestedScrollConne
 /**
  * The launcher: a terminal you can tap, on three screens. Home has the time and date (each
  * opens its app), favorites or search results, and the `~$` prompt. Swipe right for folders,
- * up for all apps; the buttons above the prompt do the same, so swiping is never required.
+ * up for all apps; the buttons above the prompt do the same, so swiping is never required
+ * (unless [showButtons] is off: `buttons off`, for people who swipe). Folders has the prompt
+ * too, and search results show on whichever screen you typed on.
  */
 @Composable
 fun HomeScreen(
@@ -238,6 +241,7 @@ fun HomeScreen(
     onWeather: () -> Unit = {},
     headsUp: String? = null,
     onHearWeather: () -> Unit = {},
+    showButtons: Boolean = true,
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -265,7 +269,10 @@ fun HomeScreen(
                     modifier = if (appsOpen) Modifier.clearAndSetSemantics { } else Modifier,
                 ) { page ->
                     if (page == 0) {
-                        FoldersPage(folders, openFolder, onOpen, onHold, onToggleFolder, onHoldFolder, onNewFolder) {
+                        FoldersPage(
+                            folders, openFolder, onOpen, onHold, onToggleFolder, onHoldFolder, onNewFolder,
+                            view, query, opening, onQueryChange, onSubmit, onVoice, folderOf, isHidden, showButtons,
+                        ) {
                             onScreen(Screen.HOME)
                         }
                     } else {
@@ -273,7 +280,7 @@ fun HomeScreen(
                             clock, date, view, favorites, query, opening, onQueryChange, onSubmit, onOpen, onHold,
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
-                            weather, onWeather, headsUp, onHearWeather,
+                            weather, onWeather, headsUp, onHearWeather, showButtons,
                         )
                     }
                 }
@@ -320,7 +327,11 @@ private fun HomePage(
     onWeather: () -> Unit,
     headsUp: String?,
     onHearWeather: () -> Unit,
+    showButtons: Boolean,
 ) {
+    // While typing, the results get all the room the keyboard leaves: the clock, weather,
+    // events and buttons step aside until the prompt is cleared.
+    val typing = view is HomeView.Results
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -330,7 +341,7 @@ private fun HomePage(
                 .nestedScroll(pullUp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            item {
+            if (!typing) item {
                 Column(Modifier.padding(top = 12.dp)) {
                     BootLine("date", bootKey, animateBoot) { alpha ->
                         Column(Modifier.bootFade(alpha)) {
@@ -358,43 +369,56 @@ private fun HomePage(
                     }
                     items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
                 }
-                is HomeView.Results -> {
-                    val command = view.command
-                    if (command != null) {
-                        item(key = "command") { CommandRow(view.query.trim(), command, onSubmit) }
-                    }
-                    item { PromptLine("find ${view.query.trim()}", title = if (view.results.isEmpty()) null else "Apps") }
-                    if (view.results.isEmpty() && command == null) {
-                        item { Hint("# no app matches “${view.query.trim()}”") }
-                    }
-                    itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
-                        val note = when {
-                            i > 0 || command?.ready == true -> null
-                            r.item == opening -> "only match · opening…"
-                            else -> "Enter opens"
-                        }
-                        val why = when (r.match) {
-                            AppSearch.Match.IN_FOLDER -> folderOf(r.item)?.let { "in $it/" }
-                            AppSearch.Match.YOUR_WORD -> r.word?.let { "your word: $it" }
-                            else -> null
-                        }
-                        val hidden = if (isHidden(r.item)) "hidden" else null
-                        AppRow(
-                            r.item,
-                            note = listOfNotNull(why, hidden, note).joinToString(" · ").ifEmpty { null },
-                            highlighted = i == 0 && command?.ready != true,
-                            onOpen = onOpen,
-                            onHold = onHold,
-                        )
-                    }
-                }
+                is HomeView.Results -> resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden)
             }
         }
-        NavRow {
-            NavButton("← Folders", "Folders", Modifier.weight(1f)) { onScreen(Screen.FOLDERS) }
-            NavButton("All apps ↑", "All apps", Modifier.weight(1f)) { onScreen(Screen.APPS) }
+        if (showButtons && !typing) {
+            NavRow {
+                NavButton("← Folders", "Folders", Modifier.weight(1f)) { onScreen(Screen.FOLDERS) }
+                NavButton("All apps ↑", "All apps", Modifier.weight(1f)) { onScreen(Screen.APPS) }
+            }
         }
         Prompt(query, onQueryChange, onSubmit, onVoice)
+    }
+}
+
+/** What's typed at the prompt: a command first if it is one, then the matching apps. */
+private fun LazyListScope.resultItems(
+    view: HomeView.Results,
+    opening: LauncherApp?,
+    onSubmit: () -> Unit,
+    onOpen: (LauncherApp) -> Unit,
+    onHold: (LauncherApp) -> Unit,
+    folderOf: (LauncherApp) -> String?,
+    isHidden: (LauncherApp) -> Boolean,
+) {
+    val command = view.command
+    if (command != null) {
+        item(key = "command") { CommandRow(view.query.trim(), command, onSubmit) }
+    }
+    item { PromptLine("find ${view.query.trim()}", title = if (view.results.isEmpty()) null else "Apps") }
+    if (view.results.isEmpty() && command == null) {
+        item { Hint("# no app matches “${view.query.trim()}”") }
+    }
+    itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
+        val note = when {
+            i > 0 || command?.ready == true -> null
+            r.item == opening -> "only match · opening…"
+            else -> "Enter opens"
+        }
+        val why = when (r.match) {
+            AppSearch.Match.IN_FOLDER -> folderOf(r.item)?.let { "in $it/" }
+            AppSearch.Match.YOUR_WORD -> r.word?.let { "your word: $it" }
+            else -> null
+        }
+        val hidden = if (isHidden(r.item)) "hidden" else null
+        AppRow(
+            r.item,
+            note = listOfNotNull(why, hidden, note).joinToString(" · ").ifEmpty { null },
+            highlighted = i == 0 && command?.ready != true,
+            onOpen = onOpen,
+            onHold = onHold,
+        )
     }
 }
 
@@ -407,6 +431,15 @@ private fun FoldersPage(
     onToggleFolder: (String) -> Unit,
     onHoldFolder: (String) -> Unit,
     onNewFolder: () -> Unit,
+    view: HomeView,
+    query: String,
+    opening: LauncherApp?,
+    onQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onVoice: () -> Unit,
+    folderOf: (LauncherApp) -> String?,
+    isHidden: (LauncherApp) -> Boolean,
+    showButtons: Boolean,
     onHome: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -416,6 +449,11 @@ private fun FoldersPage(
                 .fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
+            // Typing here searches the same as on home; the tree comes back when it's cleared.
+            if (view is HomeView.Results) {
+                resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden)
+                return@LazyColumn
+            }
             item { PromptLine("tree", short = true, title = "Folders") }
             for ((index, folder) in folders.withIndex()) {
                 val open = folder.name == openFolder
@@ -435,7 +473,8 @@ private fun FoldersPage(
             item { NewFolderRow(onNewFolder) }
             item { Hint("# press and hold a folder to rename, move or delete it") }
         }
-        NavRow { NavButton("Home →", "Home", Modifier.weight(1f), onHome) }
+        if (showButtons && view !is HomeView.Results) NavRow { NavButton("Home →", "Home", Modifier.weight(1f), onHome) }
+        Prompt(query, onQueryChange, onSubmit, onVoice)
     }
 }
 

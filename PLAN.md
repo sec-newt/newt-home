@@ -43,7 +43,7 @@ Mock-up of this direction (v2): the same link as above.
 
 Nothing on it needs the keyboard. Not everything has to be visible at once, as long as it's quick to reach.
 
-**Three screens:** home in the middle (clock, today's next event, favorites, prompt), folders a swipe right, all apps a swipe up (past the end of the list, so scrolling never switches screens by accident). Buttons above the prompt do the same, so swiping is never the only way. This replaced the two columns, which were too cramped at large text sizes.
+**Three screens:** home in the middle (clock, today's next event, favorites, prompt), folders a swipe right, all apps a swipe up (past the end of the list, so scrolling never switches screens by accident). Buttons above the prompt do the same, so swiping is never the only way; `buttons off` hides them for people who swipe. Home and folders both have the prompt, and while typing the clock, weather, events and buttons step aside so results aren't hidden behind the keyboard. This replaced the two columns, which were too cramped at large text sizes.
 
 The first version, for reference:
 
@@ -175,6 +175,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [ ] Gesture compass (open question: does it earn its place?)
   - [x] Mic button at the prompt, using the phone's voice input app (FUTO Voice Input)
   - [x] `ask` (hands a question to the Claude app) and `sys` (system card, also on tapping the status line)
+  - [x] Room for results while typing, the prompt on folders too, and `buttons off`
 
 ## GrapheneOS notes
 

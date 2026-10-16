@@ -63,6 +63,7 @@ fun HomeRoute(
     bootKey: Int,
     animateBoot: Boolean,
     status: DeviceStatus,
+    showButtons: Boolean = true,
     onOpen: (LauncherApp) -> Unit,
     onFavoritesChange: (List<String>) -> Unit,
     onFoldersChange: (List<Folder>) -> Unit,
@@ -388,6 +389,8 @@ fun HomeRoute(
                 },
                 onDismiss = ::closeSheets,
                 onSwitchLook = { runCommand(Command.Look(null)) },
+                buttonsShown = showButtons,
+                onSwitchButtons = { runCommand(Command.Buttons(null)) },
             )
         } else if (newFolder) {
             NewFolderSheet(
@@ -456,6 +459,7 @@ fun HomeRoute(
             bootKey = bootKey,
             animateBoot = animateBoot,
             status = status,
+            showButtons = showButtons,
             onClock = onClock,
             // With events on, the date opens the day's list (which has "Open calendar").
             onDate = {
