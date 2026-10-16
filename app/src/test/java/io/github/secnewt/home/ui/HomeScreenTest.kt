@@ -1,6 +1,15 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import io.github.secnewt.home.apps.WeatherHour
 import io.github.secnewt.home.apps.WeatherNow
 import androidx.compose.runtime.CompositionLocalProvider
@@ -138,6 +147,7 @@ class HomeScreenTest {
         status: DeviceStatus = DeviceStatus(battery = 54, connection = Connection.WIFI),
         weather: WeatherNow? = null,
         headsUp: String? = null,
+        showButtons: Boolean = true,
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -173,7 +183,15 @@ class HomeScreenTest {
         onAgendaChoice = onAgendaChoice,
         weather = weather,
         headsUp = headsUp,
+        showButtons = showButtons,
     )
+
+    /** The screen squeezed into what an open keyboard leaves (about the top 60%). */
+    @Composable
+    private fun WithKeyboard(content: @Composable () -> Unit) = Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { content() }
+        Box(Modifier.fillMaxWidth().height(360.dp).background(Color(0xFF26262B)))
+    }
 
     private val hour = 60L * 60 * 1000
 
@@ -282,6 +300,56 @@ class HomeScreenTest {
 
     @Test
     fun searchNoMatch() = render("search_no_match", dark = true) { Home(view = results("zz"), query = "zz") }
+
+    @Test
+    fun searchWithTheKeyboardOpen() = render("search_keyboard_open", dark = true) {
+        WithKeyboard { Home(view = results("s"), query = "s", weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanSearchWithTheKeyboardOpen() = render("clean_search_keyboard_open", dark = false) {
+        Clean { WithKeyboard { Home(view = results("s"), query = "s", weather = sunny, agenda = Agenda.Today(events)) } }
+    }
+
+    @Test
+    fun typingMakesRoomForResults() {
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) {
+                WithKeyboard { Home(view = results("s"), query = "s", weather = sunny, agenda = Agenda.Today(events)) }
+            }
+        }
+        // The clock, events and buttons step aside; the first results are on screen.
+        composeRule.onNodeWithText("13:22").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("All apps").assertDoesNotExist()
+        composeRule.onNodeWithText("Signal").assertIsDisplayed()
+    }
+
+    @Test
+    fun foldersSearch() = render("folders_search", dark = true) {
+        WithKeyboard { Home(screen = Screen.FOLDERS, view = results("s"), query = "s") }
+    }
+
+    @Test
+    fun foldersHaveThePrompt() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(screen = Screen.FOLDERS) } }
+        composeRule.onNodeWithContentDescription("Type an app name").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeWithoutButtons() = render("home_no_buttons", dark = true) { Home(showButtons = false) }
+
+    @Test
+    fun cleanFoldersWithoutButtons() = render("clean_folders_no_buttons", dark = false) {
+        Clean { Home(screen = Screen.FOLDERS, showButtons = false) }
+    }
+
+    @Test
+    fun buttonsOffHidesThem() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(showButtons = false) } }
+        composeRule.onNodeWithContentDescription("Folders").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("All apps").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Type an app name").assertIsDisplayed()
+    }
 
     @Test
     fun allApps() = render("all_apps", dark = true) { Home(screen = Screen.APPS) }
@@ -846,7 +914,7 @@ class HomeScreenTest {
     @Test
     fun cleanHelpSheet() = render("clean_help_dark", dark = true) {
         Clean {
-            WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = {}) }) { Home() }
+            WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = {}, onSwitchButtons = {}) }) { Home() }
         }
     }
 

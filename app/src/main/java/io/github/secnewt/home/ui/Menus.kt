@@ -789,6 +789,8 @@ fun HelpSheet(
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
     onSwitchLook: (() -> Unit)? = null,
+    buttonsShown: Boolean = true,
+    onSwitchButtons: (() -> Unit)? = null,
 ) {
     val clean = cleanLook()
     MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Commands") }) {
@@ -804,6 +806,13 @@ fun HelpSheet(
                 if (clean) "Switch to the terminal look" else "Switch to the clean look",
                 if (clean) "The ~$ prompt, scanlines and the newt" else "Plain cards and words, like Newt Phone",
                 onClick = onSwitchLook,
+            )
+        }
+        if (onSwitchButtons != null) {
+            MenuOption(
+                if (buttonsShown) "Hide the screen buttons" else "Show the screen buttons",
+                if (buttonsShown) "Folders and All apps go; swiping still works" else "Folders and All apps above the prompt",
+                onClick = onSwitchButtons,
             )
         }
         SheetButton("Close", onDismiss)

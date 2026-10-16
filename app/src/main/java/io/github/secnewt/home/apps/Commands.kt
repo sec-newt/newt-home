@@ -31,6 +31,9 @@ sealed interface Command {
 
     /** [clean] true for the clean look, false for the terminal look, or null to switch. */
     data class Look(val clean: Boolean?) : Command
+
+    /** [show] true to show the Folders and All apps buttons, false to hide them, or null to switch. */
+    data class Buttons(val show: Boolean?) : Command
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -66,6 +69,7 @@ object Commands {
         CommandHelp("ask what's a good buttermilk substitute", "Asks the Claude app. ask on its own opens it"),
         CommandHelp("sys", "This phone's system info. Tapping the status line does the same"),
         CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back"),
+        CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back"),
         CommandHelp("help", "This list"),
     )
 
@@ -106,11 +110,17 @@ object Commands {
                 "terminal", "classic" -> CommandMatch.Ready(Command.Look(false))
                 else -> CommandMatch.Incomplete(word, "$word clean or $word terminal")
             }
+            "buttons" -> when (lower) {
+                "" -> CommandMatch.Ready(Command.Buttons(null))
+                "on", "show" -> CommandMatch.Ready(Command.Buttons(true))
+                "off", "hide" -> CommandMatch.Ready(Command.Buttons(false))
+                else -> CommandMatch.Incomplete(word, "buttons on or buttons off")
+            }
             else -> null
         }
     }
 
-    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme")
+    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme", "buttons")
 
     /**
      * Whether what's typed could still become a command (`hel` on the way to `help`). The
@@ -198,6 +208,11 @@ object Commands {
             true -> "switch to the clean look"
             false -> "switch to the terminal look"
             null -> "switch between the terminal and clean looks"
+        }
+        is Command.Buttons -> when (command.show) {
+            true -> "show the Folders and All apps buttons"
+            false -> "hide the Folders and All apps buttons"
+            null -> "show or hide the Folders and All apps buttons"
         }
     }
 }

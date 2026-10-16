@@ -109,6 +109,9 @@ class MainActivity : ComponentActivity() {
     /** Terminal or clean; `look clean` and `look terminal` at the prompt switch it. */
     private var look by mutableStateOf(HomeLook.TERMINAL)
 
+    /** The Folders and All apps buttons; `buttons off` hides them for people who swipe. */
+    private var showButtons by mutableStateOf(true)
+
     // "2 missed" under Phone, from Newt Phone (only the number, only for Newt-signed apps).
     private var missed by mutableStateOf<Int?>(null)
     private lateinit var missedCalls: MissedCalls
@@ -187,6 +190,7 @@ class MainActivity : ComponentActivity() {
         searchWords = store.searchWords()
         websites = store.websites()
         look = HomeLook.named(store.look())
+        showButtons = store.showButtons()
         missedCalls = MissedCalls(this)
         weather = Weather(this)
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
@@ -226,6 +230,7 @@ class MainActivity : ComponentActivity() {
                         resetSignal = resetSignal,
                         bootKey = bootKey,
                         animateBoot = animateBoot,
+                        showButtons = showButtons,
                         status = status.copy(flashlight = torchOn),
                         onOpen = ::open,
                         onFavoritesChange = {
@@ -456,6 +461,10 @@ class MainActivity : ComponentActivity() {
                 store.setLook(look.name)
                 // Newt Weather and Newt Phone follow along.
                 LookProvider.changed(this)
+            }
+            is Command.Buttons -> {
+                showButtons = command.show ?: !showButtons
+                store.setShowButtons(showButtons)
             }
             // Shown by the home screen itself.
             Command.Help, Command.Sys -> Unit

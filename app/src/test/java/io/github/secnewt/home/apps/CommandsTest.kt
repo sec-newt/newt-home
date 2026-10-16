@@ -85,6 +85,18 @@ class CommandsTest {
     }
 
     @Test
+    fun `buttons shows or hides the screen buttons`() {
+        assertEquals(Command.Buttons(null), ready("buttons"))
+        assertEquals(Command.Buttons(false), ready("buttons off"))
+        assertEquals(Command.Buttons(true), ready("Buttons On"))
+        assertEquals(Command.Buttons(false), ready("buttons hide"))
+        assertTrue(Commands.parse("buttons purple") is CommandMatch.Incomplete)
+        assertTrue(Commands.mightBecomeCommand("butt"))
+        val time = { h: Int, m: Int -> "$h:$m" }
+        assertEquals("hide the Folders and All apps buttons", Commands.describe(Command.Buttons(false), time))
+    }
+
+    @Test
     fun `look switches between terminal and clean`() {
         assertEquals(Command.Look(null), ready("look"))
         assertEquals(Command.Look(true), ready("look clean"))

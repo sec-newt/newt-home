@@ -69,6 +69,13 @@ class HomeStore(context: Context) {
         prefs.edit().putString(LOOK, name).apply()
     }
 
+    /** Whether the Folders and All apps buttons show; on unless `buttons off` was typed. */
+    fun showButtons(): Boolean = prefs.getBoolean(SHOW_BUTTONS, true)
+
+    fun setShowButtons(show: Boolean) {
+        prefs.edit().putBoolean(SHOW_BUTTONS, show).apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -87,6 +94,7 @@ class HomeStore(context: Context) {
         const val SEARCH_WORDS = "search_words"
         const val WEBSITES = "websites"
         const val LOOK = "look"
+        const val SHOW_BUTTONS = "show_buttons"
         const val USES = "uses:"
     }
 }

@@ -34,7 +34,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 - **Three screens.** Home has the time, date and favorites (`~$ ls favs`). Swipe right
   for folders (`~$ tree`), or swipe up past the end of the list for all apps (`~$ ls`).
   The **← Folders** and **All apps ↑** buttons above the prompt do the same, so
-  swiping is never required. Back and Home return to the home screen.
+  swiping is never required. If you'd rather swipe, `buttons off` hides them (or use the
+  button at the end of `help`); `buttons on` brings them back. Back and Home return to
+  the home screen.
 - **Favorites.** Press and hold any app and choose **Add to favorites**. In the same
   menu, **Move up** and **Move down** change their order.
 - **Folders.** Tap a folder to open it in place; the one you opened last stays open.
@@ -53,7 +55,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 - **Search words.** Press and hold an app and choose **Add search words**, like `bank` or
   `email`, so typing one finds it even when you can't remember its name. Results say
   "your word: bank" so you know why it showed up.
-- **The prompt.** Type part of an app's name, or a folder's name; capitals don't matter. When only one
+- **The prompt.** It's on both home and folders. Type part of an app's name, or a folder's name; capitals don't matter.
+  While you type, the clock, weather, events and buttons step aside so the results have
+  the room the keyboard leaves; clear the prompt and they come back. When only one
   app matches (`sig` → Signal), it opens by itself after a moment. Keep typing to
   cancel. **Enter** opens the top result.
 - **Commands.** Type `help` for the list. Each shows what it will do before you press
