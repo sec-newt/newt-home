@@ -107,10 +107,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   show up in search, marked "work". Private space apps only ever show in their own
   section, and only while it's unlocked; unlocking asks for your PIN or fingerprint.
 - **Missed calls.** With Newt Phone installed, "2 missed" shows in red under Phone.
-- **Unread messages.** With Newt Messages installed, "3 unread" shows under Messages, the
-  same way. Only the number is shared, and only with Newt-signed apps.
   Newt Phone shares only that number, and only with apps signed with the Newt key, so
   Newt Home never sees your call history.
+- **Unread messages.** With Newt Messages installed, "3 unread" shows under Messages, the
+  same way. Only the number is shared, and only with Newt-signed apps.
 
 ## Privacy
 
