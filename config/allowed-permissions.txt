@@ -22,6 +22,10 @@ com.android.alarm.permission.SET_ALARM
 # Phone. Signature-level, so Newt Phone grants it only to Newt-signed apps.
 io.github.secnewt.dialer.permission.MISSED_CALL_COUNT
 #
+# "3 unread" under Messages: only the number of unread messages, from Newt
+# Messages. Signature-level, so Newt Messages grants it only to Newt-signed apps.
+io.github.secnewt.messages.permission.UNREAD_COUNT
+#
 # The weather by the date: temperatures, conditions and active warnings from
 # Newt Weather, which does the fetching. Signature-level, so Newt Weather grants
 # it only to Newt-signed apps; no ZIP is shared and Newt Home stays offline.

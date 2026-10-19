@@ -61,6 +61,7 @@ import io.github.secnewt.home.apps.ProfileState
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.MissedCalls
+import io.github.secnewt.home.apps.UnreadMessages
 import io.github.secnewt.home.share.LookProvider
 import io.github.secnewt.home.apps.Speaker
 import io.github.secnewt.home.apps.WeatherHour
@@ -115,6 +116,12 @@ class MainActivity : ComponentActivity() {
     // "2 missed" under Phone, from Newt Phone (only the number, only for Newt-signed apps).
     private var missed by mutableStateOf<Int?>(null)
     private lateinit var missedCalls: MissedCalls
+    // "3 unread" under Messages, from Newt Messages (only the number, only for Newt-signed apps).
+    private var unread by mutableStateOf<Int?>(null)
+    private lateinit var unreadMessages: UnreadMessages
+    private val unreadChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) = refreshUnread()
+    }
     private val missedChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = refreshMissed()
     }
@@ -192,6 +199,7 @@ class MainActivity : ComponentActivity() {
         look = HomeLook.named(store.look())
         showButtons = store.showButtons()
         missedCalls = MissedCalls(this)
+        unreadMessages = UnreadMessages(this)
         weather = Weather(this)
         launcherApps.registerCallback(packageChanges, Handler(Looper.getMainLooper()))
         ContextCompat.registerReceiver(
@@ -292,6 +300,11 @@ class MainActivity : ComponentActivity() {
             // Newt Phone isn't installed; the count is just left off.
         }
         try {
+            contentResolver.registerContentObserver(UnreadMessages.URI, false, unreadChanges)
+        } catch (e: RuntimeException) {
+            // Newt Messages isn't installed; the count is just left off.
+        }
+        try {
             // Newt Weather says when a fresh forecast lands.
             contentResolver.registerContentObserver(Weather.SUMMARY, false, weatherChanges)
         } catch (e: RuntimeException) {
@@ -303,6 +316,7 @@ class MainActivity : ComponentActivity() {
         watcher.stop()
         stopWatchingCalendar()
         contentResolver.unregisterContentObserver(missedChanges)
+        contentResolver.unregisterContentObserver(unreadChanges)
         contentResolver.unregisterContentObserver(weatherChanges)
         super.onStop()
     }
@@ -328,6 +342,7 @@ class MainActivity : ComponentActivity() {
         // Calendar access can be turned off in Settings while we're away.
         refreshAgenda()
         refreshMissed()
+        refreshUnread()
         refreshWeather()
     }
 
@@ -559,8 +574,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun withAlert(app: LauncherApp): LauncherApp =
-        if (MissedCalls.isNewtPhone(app.key)) app.copy(alert = MissedCalls.label(missed)) else app
+    private fun withAlert(app: LauncherApp): LauncherApp = when {
+        MissedCalls.isNewtPhone(app.key) -> app.copy(alert = MissedCalls.label(missed))
+        UnreadMessages.isNewtMessages(app.key) -> app.copy(alert = UnreadMessages.label(unread))
+        else -> app
+    }
 
     private fun refreshWeather() {
         lifecycleScope.launch {
@@ -574,6 +592,12 @@ class MainActivity : ComponentActivity() {
     private fun openWeather() {
         val intent = packageManager.getLaunchIntentForPackage(Weather.NEWT_WEATHER)
         if (intent != null) startActivity(intent) else say("Newt Weather isn't installed")
+    }
+
+    private fun refreshUnread() {
+        lifecycleScope.launch {
+            unread = withContext(Dispatchers.IO) { unreadMessages.count() }
+        }
     }
 
     private fun refreshMissed() {

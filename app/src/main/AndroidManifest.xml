@@ -22,6 +22,10 @@
          call history is ever shared and nobody is asked. -->
     <uses-permission android:name="io.github.secnewt.dialer.permission.MISSED_CALL_COUNT" />
 
+    <!-- "3 unread" under Messages: how many messages Newt Messages has unread, and nothing else.
+         Newt Messages only grants this to apps signed with the Newt key; no message is shared. -->
+    <uses-permission android:name="io.github.secnewt.messages.permission.UNREAD_COUNT" />
+
     <!-- The weather by the date: temperatures, conditions and active warnings from Newt Weather,
          which does the fetching. Newt Weather grants this only to apps signed with the Newt key;
          nobody is asked, no ZIP or place is shared, and Newt Home still has no internet. -->
@@ -50,6 +54,8 @@
         </intent>
         <!-- Newt Phone's missed-call count (see above), and no other app's data. -->
         <provider android:authorities="io.github.secnewt.dialer.missedcalls" />
+        <!-- Newt Messages' unread count (see above), and no other app's data. -->
+        <provider android:authorities="io.github.secnewt.messages.unread" />
         <!-- Newt Weather's forecast (see above), and no other app's data. -->
         <provider android:authorities="io.github.secnewt.weather.forecast" />
         <intent>
