@@ -547,7 +547,7 @@ class HomeScreenTest {
     @Test
     fun eventsLineShowsTheNextEvent() {
         composeRule.setContent { HomeTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
-        composeRule.onNodeWithText("next: 15:00 Dentist · 2 more today").assertIsDisplayed()
+        composeRule.onNodeWithText("next: 15:00 Dentist · in 3 h · 2 more today").assertIsDisplayed()
     }
 
     private fun commandResults(query: String, text: String, ready: Boolean) =
@@ -1223,5 +1223,47 @@ class HomeScreenTest {
         }
         composeRule.onNodeWithText("Cancel").performScrollTo().performClick()
         assertTrue(closed)
+    }
+
+    @Test
+    fun cleanNextEventIsACardWithACountdown() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { Home(agenda = Agenda.Today(events)) } } }
+        composeRule.onNodeWithText("NEXT · IN 3 H", useUnmergedTree = true).assertExists()
+        composeRule.onNodeWithText("15:00 Dentist", useUnmergedTree = true).assertExists()
+        composeRule.onNodeWithText("+2 more today", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun cleanFavoritesAreTwoColumnTilesWithAMissedPill() {
+        val withMissed = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { Home(favs = withMissed) } } }
+        composeRule.onNodeWithText("2 missed", useUnmergedTree = true).assertExists()
+        val first = composeRule.onNodeWithText(withMissed[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithText(withMissed[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val width = composeRule.onRoot().fetchSemanticsNode().size.width
+        assertTrue("side by side", second.left >= width / 2f && kotlin.math.abs(second.top - first.top) < 4f)
+    }
+
+    @Test
+    fun cleanHomeTilesDark() = render("clean_home_tiles_dark", dark = true) {
+        Clean { Home(favs = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }, weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanHomeTilesLargeText() = render("clean_home_tiles_200_percent", dark = false, fontScale = 2f) {
+        Clean { Home(favs = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }, weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanFavoritesStackOneToARowAtLargeText() {
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
+                HomeTheme(darkTheme = true) { Clean { Home() } }
+            }
+        }
+        val first = composeRule.onNodeWithText(favorites[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithText(favorites[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("one to a row", second.top > first.bottom)
     }
 }

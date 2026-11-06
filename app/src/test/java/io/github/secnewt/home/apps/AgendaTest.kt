@@ -17,8 +17,8 @@ class AgendaTest {
 
     @Test
     fun `the line names the next timed event and counts the rest`() {
-        assertEquals("next: 9:00 Standup · 3 more today", AgendaText.line(day, 8 * hour, time))
-        assertEquals("next: 15:00 Dentist · 2 more today", AgendaText.line(day, 12 * hour, time))
+        assertEquals("next: 9:00 Standup · in 1 h · 3 more today", AgendaText.line(day, 8 * hour, time))
+        assertEquals("next: 15:00 Dentist · in 3 h · 2 more today", AgendaText.line(day, 12 * hour, time))
     }
 
     @Test
@@ -51,5 +51,21 @@ class AgendaTest {
         assertEquals("(no title)", AgendaText.titleOf(null))
         assertEquals("(no title)", AgendaText.titleOf("   "))
         assertEquals("Dentist", AgendaText.titleOf("  Dentist "))
+    }
+
+    private val minute = 60L * 1000
+
+    @Test
+    fun `countdown in minutes and hours`() {
+        assertEquals("in 45 min", AgendaText.countdown(45 * minute, 0))
+        assertEquals("in 3 h", AgendaText.countdown(3 * hour, 0))
+        assertEquals("in 1 h 15 min", AgendaText.countdown(75 * minute, 0))
+        assertEquals("in 1 min", AgendaText.countdown(30_000, 0))
+    }
+
+    @Test
+    fun `no countdown once it has started`() {
+        assertNull(AgendaText.countdown(0, 0))
+        assertNull(AgendaText.countdown(0, 5 * minute))
     }
 }
