@@ -492,7 +492,7 @@ private fun NameField(
     if (problem != null) {
         Text(
             problem,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
         )
@@ -554,7 +554,7 @@ private fun WordsField(appName: String, initial: List<String>, onSave: (List<Str
     )
     Text(
         "Separate words with commas or spaces. Capitals don't matter.",
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
     )
@@ -569,7 +569,7 @@ private fun MenuHeading(text: String) {
         text,
         fontFamily = if (cleanLook()) NewtFonts.Display else NewtFonts.Mono,
         fontWeight = FontWeight.Bold,
-        fontSize = if (cleanLook()) 17.sp else 15.sp,
+        fontSize = if (cleanLook()) 17.sp else 16.sp,
         color = if (cleanLook()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
         modifier = Modifier
             .padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
@@ -618,7 +618,7 @@ private fun MenuOption(
                 fontSize = if (cleanLook()) 20.sp else 19.sp,
                 color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
-            Text(explanation, fontSize = if (cleanLook()) 16.sp else 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(explanation, fontSize = if (cleanLook()) 16.sp else 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -876,7 +876,7 @@ fun AddWebsiteSheet(onAdd: (name: String, url: String) -> Unit, onDismiss: () ->
         if (tried) {
             Text(
                 if (address.isBlank()) "Type the site's address first." else "That doesn't look like a web address.",
-                fontSize = 15.sp,
+                fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
             )
@@ -891,7 +891,7 @@ fun AddWebsiteSheet(onAdd: (name: String, url: String) -> Unit, onDismiss: () ->
         )
         Text(
             "It opens in your browser and shows in All apps and search.",
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
         )
@@ -1247,7 +1247,7 @@ private fun HourCell(index: Int, hour: WeatherHour, time: (Long) -> String) {
         Text(
             hour.precipChance?.takeIf { it > 0 }?.let { "$it%" } ?: " ",
             fontFamily = font,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = NewtWeather.lowColor(),
         )
     }

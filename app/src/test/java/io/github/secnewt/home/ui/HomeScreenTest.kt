@@ -53,6 +53,7 @@ import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.ui.theme.HomeTheme
 import org.junit.Assert.assertEquals
+import io.github.secnewt.test.assertTextAtLeast
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -104,6 +105,8 @@ class HomeScreenTest {
                 failureLevel = RoborazziATFAccessibilityChecker.CheckLevel.Warning,
             )
         )
+        // The UI refresh's floor: no text under 16sp at the phone's normal font size.
+        if (fontScale == 1f) composeRule.assertTextAtLeast(16f)
     }
 
     /**

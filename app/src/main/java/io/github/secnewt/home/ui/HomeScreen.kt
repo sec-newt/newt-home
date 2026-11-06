@@ -632,7 +632,7 @@ private fun LetterGrid(letters: List<Pair<String, Int>>, modifier: Modifier = Mo
                     Text(
                         "$count",
                         fontFamily = NewtFonts.Mono,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.clearAndSetSemantics { },
                     )
@@ -886,7 +886,7 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
             }
         },
         fontFamily = NewtFonts.Mono,
-        fontSize = 13.sp,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
@@ -994,7 +994,7 @@ private fun PromptLine(command: String, short: Boolean = false, title: String? =
             append(command)
         },
         fontFamily = NewtFonts.Mono,
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .padding(top = 12.dp, bottom = 4.dp)
@@ -1218,7 +1218,7 @@ private fun Hint(text: String, top: Dp = 12.dp) {
         // The clean look drops the `# ` and `└ ` that make a hint look like a terminal comment.
         if (clean) text.removePrefix("# ").removePrefix("└ ").replaceFirstChar { it.uppercase() } else text,
         fontFamily = rowFont(),
-        fontSize = if (clean) 17.sp else 14.sp,
+        fontSize = if (clean) 17.sp else 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = top, start = 4.dp),
     )
@@ -1243,7 +1243,7 @@ private fun AgendaLine(
             Text(
                 if (cleanLook()) "Show today's events here?" else "show today's events here?",
                 fontFamily = rowFont(),
-                fontSize = if (cleanLook()) 18.sp else 15.sp,
+                fontSize = if (cleanLook()) 18.sp else 16.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
             )
@@ -1424,10 +1424,10 @@ private fun AppRow(
             val alert = app.alert
             if (alert != null) {
                 // A word, not just a red dot, so it's never color alone.
-                Text(alert, fontFamily = rowFont(), fontSize = if (clean) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Text(alert, fontFamily = rowFont(), fontSize = if (clean) 17.sp else 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
             if (line != null) {
-                Text(line, fontFamily = rowFont(), fontSize = if (clean) 16.sp else 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(line, fontFamily = rowFont(), fontSize = if (clean) 16.sp else 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -1491,7 +1491,7 @@ private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
             Text(
                 if (command.ready) "${command.text} · Enter runs it" else "# ${command.text}",
                 fontFamily = NewtFonts.Mono,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (command.ready) prompt else MaterialTheme.colorScheme.onSurfaceVariant,
             )
