@@ -54,6 +54,8 @@ import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.ui.theme.HomeTheme
 import org.junit.Assert.assertEquals
 import io.github.secnewt.test.assertTextAtLeast
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.hasSetTextAction
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -1017,7 +1019,7 @@ class HomeScreenTest {
                 WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = { switched = true }) }) { Home() }
             }
         }
-        composeRule.onNodeWithText("Switch to the clean look").performScrollTo().performClick()
+        composeRule.onNodeWithText("Clean look").performScrollTo().assertIsOff().performClick()
         assertEquals(true, switched)
     }
 
@@ -1142,5 +1144,47 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Folder's name").performTextInput("  Music  and podcasts ")
         composeRule.onNodeWithText("Make folder").performClick()
         assertEquals("Music and podcasts", made)
+    }
+
+    private fun showHelp(onPick: (String) -> Unit = {}) = composeRule.setContent {
+        HomeTheme(darkTheme = true) {
+            WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = onPick, onDismiss = {}, onSwitchLook = {}) }) { Home() }
+        }
+    }
+
+    @Test
+    fun helpGroupsCommandsByTopic() {
+        showHelp()
+        composeRule.onNodeWithText("Time").assertExists()
+        composeRule.onNodeWithText("People").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Apps & look").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun tappingACommandShowsItsLineAndTryOnlyFillsThePrompt() {
+        val picked = mutableListOf<String>()
+        showHelp(onPick = { picked += it })
+        composeRule.onNodeWithText("Try").assertDoesNotExist()
+        composeRule.onNodeWithText("timer 10").performClick()
+        composeRule.onNodeWithText("A 10 minute timer. Also timer 90s, timer 1h 30m").assertExists()
+        assertEquals(emptyList<String>(), picked)
+        composeRule.onNodeWithText("Try").performClick()
+        assertEquals(listOf("timer 10"), picked)
+    }
+
+    @Test
+    fun findACommandFilters() {
+        showHelp()
+        composeRule.onNode(hasSetTextAction() and hasText("Find a command")).performTextInput("wif")
+        composeRule.onNodeWithText("wifi").assertExists()
+        composeRule.onNodeWithText("timer 10").assertDoesNotExist()
+    }
+
+    @Test
+    fun findACommandWithNoMatchSaysSo() {
+        showHelp()
+        composeRule.onNode(hasSetTextAction() and hasText("Find a command")).performTextInput("zz")
+        composeRule.onNodeWithText("No command matches").assertExists()
+        composeRule.onNodeWithText("Clean look").performScrollTo().assertExists()
     }
 }
