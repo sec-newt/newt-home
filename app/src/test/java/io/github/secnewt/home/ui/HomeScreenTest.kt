@@ -56,6 +56,11 @@ import org.junit.Assert.assertEquals
 import io.github.secnewt.test.assertTextAtLeast
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
+import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -619,7 +624,7 @@ class HomeScreenTest {
         "search_words_200_percent",
         dark = false,
         fontScale = 2f,
-        before = { composeRule.onNodeWithText("Add search words").performClick() },
+        before = { composeRule.onNodeWithText("Search words").performClick() },
     ) {
         WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Signal"), isFavorite = true, folder = null) }) { Home() }
     }
@@ -1186,5 +1191,37 @@ class HomeScreenTest {
         composeRule.onNode(hasSetTextAction() and hasText("Find a command")).performTextInput("zz")
         composeRule.onNodeWithText("No command matches").assertExists()
         composeRule.onNodeWithText("Clean look").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun holdMenuTilesAreButtonsAndOpenTheirPage() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { AppMenu(app("Signal"), isFavorite = true, folder = null) } }
+        composeRule.onNodeWithText("Unfavorite").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        composeRule.onNodeWithText("Move to folder").performClick()
+        composeRule.onNodeWithText("New folder").assertExists()
+    }
+
+    @Test
+    fun removingAWebsiteSitsApartFromTheGrid() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { AppMenu(app("Bank"), isFavorite = false, folder = null) } }
+        val hide = composeRule.onNodeWithText("Hide").fetchSemanticsNode().boundsInRoot
+        val remove = composeRule.onNodeWithText("Remove website").fetchSemanticsNode().boundsInRoot
+        assertTrue("Remove is below the grid", remove.top >= hide.bottom)
+    }
+
+    @Test
+    fun holdMenuCancelCloses() {
+        var closed = false
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) {
+                HoldMenu(
+                    app = app("Signal"), isFavorite = false, canMoveUp = false, canMoveDown = false, folderNames = emptyList(),
+                    currentFolder = null, onToggleFavorite = {}, onMove = {}, onMoveToFolder = {}, onMoveToNewFolder = {},
+                    onAppInfo = {}, onDismiss = { closed = true },
+                )
+            }
+        }
+        composeRule.onNodeWithText("Cancel").performScrollTo().performClick()
+        assertTrue(closed)
     }
 }

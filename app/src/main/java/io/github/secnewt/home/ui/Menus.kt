@@ -1,5 +1,11 @@
 package io.github.secnewt.home.ui
 
+import io.github.secnewt.ui.NewtAction
+import io.github.secnewt.ui.NewtActionGrid
+import io.github.secnewt.ui.NewtButton
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -258,60 +264,58 @@ fun HoldMenu(
                 // The app's own shortcuts first: they're what you'd hold an app to reach.
                 if (shortcuts.isNotEmpty()) {
                     MenuHeading("Jump to")
-                    if (cleanLook()) {
-                        ShortcutChips(shortcuts, app.name, onOpenShortcut)
+                    ShortcutChips(shortcuts, app.name, onOpenShortcut)
+                }
+                val actions = buildList {
+                    if (isFavorite) {
+                        add(NewtAction("Unfavorite", onToggleFavorite, Icons.Filled.Star, hint = "Stays in All apps"))
                     } else {
-                        for (shortcut in shortcuts) {
-                            MenuOption(
-                                shortcut.label,
-                                shortcut.description ?: "In ${app.name}",
-                                { onOpenShortcut(shortcut) },
-                            )
-                        }
+                        add(NewtAction("Favorite", onToggleFavorite, Icons.Filled.Star, hint = "On your home screen"))
                     }
-                    MenuHeading("Options")
+                    add(
+                        NewtAction(
+                            "Move to folder", { page = AppMenuPage.PICK_FOLDER }, FolderShape,
+                            hint = currentFolder?.let { "Now in ${folderLabel(it)}" },
+                        ),
+                    )
+                    if (isFavorite && canMoveUp) add(NewtAction("Move up", { onMove(-1) }, Icons.Filled.KeyboardArrowUp))
+                    if (isFavorite && canMoveDown) add(NewtAction("Move down", { onMove(1) }, Icons.Filled.KeyboardArrowDown))
+                    add(
+                        NewtAction(
+                            "Search words", { page = AppMenuPage.WORDS }, Icons.Filled.Search,
+                            hint = if (words.isEmpty()) "Like \"bank\"" else words.joinToString(", "),
+                        ),
+                    )
+                    if (isHidden) {
+                        add(NewtAction("Show", onToggleHidden, Icons.Filled.Check, hint = "Back in All apps"))
+                    } else {
+                        add(NewtAction("Hide", onToggleHidden, Icons.Filled.Close, hint = "Search still finds it"))
+                    }
                 }
-                if (isFavorite) {
-                    MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite, icon = Icons.Filled.Star)
-                    if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) }, icon = Icons.Filled.KeyboardArrowUp)
-                    if (canMoveDown) MenuOption("Move down", "Lower in your favorites", { onMove(1) }, icon = Icons.Filled.KeyboardArrowDown)
-                } else {
-                    MenuOption("Add to favorites", "Puts it on your home screen", onToggleFavorite, icon = Icons.Filled.Star)
-                }
-                MenuOption(
-                    "Move to folder",
-                    if (currentFolder != null) "Now in ${folderLabel(currentFolder)}" else "Not in a folder yet",
-                    { page = AppMenuPage.PICK_FOLDER },
-                    icon = FolderShape,
-                )
-                MenuOption(
-                    if (words.isEmpty()) "Add search words" else "Search words",
-                    if (words.isEmpty()) "Your own words that find it, like bank or maps" else words.joinToString(", "),
-                    { page = AppMenuPage.WORDS },
-                    icon = Icons.Filled.Search,
-                )
-                if (isHidden) {
-                    MenuOption("Show in lists", "Back in All apps and its folder", onToggleHidden, icon = Icons.Filled.Check)
-                } else {
-                    MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden, icon = Icons.Filled.Close)
-                }
+                NewtActionGrid(actions, modifier = Modifier.padding(vertical = 8.dp))
+                // Removing is the one thing that can't be undone here: red, and apart from the grid.
                 val from = app.from
                 val url = app.url
-                if (url != null) {
-                    MenuOption("Remove website", "Takes it off Newt Home. Opens $url", onRemoveShortcut, danger = true, icon = Icons.Filled.Delete)
-                } else if (from != null) {
-                    MenuOption(
-                        "Remove shortcut",
-                        "Takes it off Newt Home. You can add it again from $from",
-                        onRemoveShortcut,
-                        danger = true,
+                if (url != null || from != null) {
+                    NewtPrimaryButton(
+                        if (url != null) "Remove website" else "Remove shortcut",
+                        onClick = onRemoveShortcut,
                         icon = Icons.Filled.Delete,
+                        tone = NewtTone.Danger,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     )
-                    MenuOption("$from info", "Android's page for $from, which made this shortcut", onAppInfo, icon = Icons.Filled.Info)
-                } else {
-                    MenuOption("App info", "Android's page for this app", onAppInfo, icon = Icons.Filled.Info)
                 }
-                SheetButton("Cancel", onDismiss)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.height(IntrinsicSize.Min).padding(top = 4.dp)) {
+                    if (url == null) {
+                        NewtButton(
+                            if (from != null) "$from info" else "App info",
+                            onClick = onAppInfo,
+                            icon = Icons.Filled.Info,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                    NewtButton("Cancel", onClick = onDismiss, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
             }
             AppMenuPage.WORDS -> WordsField(
                 appName = app.name,
