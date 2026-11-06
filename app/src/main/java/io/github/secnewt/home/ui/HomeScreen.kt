@@ -1,5 +1,10 @@
 package io.github.secnewt.home.ui
 
+import io.github.secnewt.ui.NewtStateChip
+import io.github.secnewt.ui.NewtTone
+import io.github.secnewt.home.apps.DayEvent
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
@@ -332,6 +337,9 @@ private fun HomePage(
     // While typing, the results get all the room the keyboard leaves: the clock, weather,
     // events and buttons step aside until the prompt is cleared.
     val typing = view is HomeView.Results
+    val clean = cleanLook()
+    // Two tiles to a row only while names fit: at large text each tile gets the full width.
+    val perRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -367,7 +375,19 @@ private fun HomePage(
                     if (favorites.isEmpty()) {
                         item { Hint("# press and hold any app to add it here") }
                     }
-                    items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
+                    if (clean) {
+                        // Big tiles, two to a row: twice the tap area, and a missed-call pill you can't miss.
+                        items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 10.dp).height(IntrinsicSize.Min),
+                            ) {
+                                pair.forEach { FavoriteTile(it, onOpen, onHold, Modifier.weight(1f).fillMaxHeight()) }
+                            }
+                        }
+                    } else {
+                        items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
+                    }
                 }
                 is HomeView.Results -> resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden)
             }
@@ -632,7 +652,7 @@ private fun LetterGrid(letters: List<Pair<String, Int>>, modifier: Modifier = Mo
                     Text(
                         "$count",
                         fontFamily = NewtFonts.Mono,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.clearAndSetSemantics { },
                     )
@@ -886,7 +906,7 @@ private fun StatusLine(status: DeviceStatus, onTap: () -> Unit) {
             }
         },
         fontFamily = NewtFonts.Mono,
-        fontSize = 13.sp,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
@@ -994,7 +1014,7 @@ private fun PromptLine(command: String, short: Boolean = false, title: String? =
             append(command)
         },
         fontFamily = NewtFonts.Mono,
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .padding(top = 12.dp, bottom = 4.dp)
@@ -1218,7 +1238,7 @@ private fun Hint(text: String, top: Dp = 12.dp) {
         // The clean look drops the `# ` and `└ ` that make a hint look like a terminal comment.
         if (clean) text.removePrefix("# ").removePrefix("└ ").replaceFirstChar { it.uppercase() } else text,
         fontFamily = rowFont(),
-        fontSize = if (clean) 17.sp else 14.sp,
+        fontSize = if (clean) 17.sp else 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = top, start = 4.dp),
     )
@@ -1243,7 +1263,7 @@ private fun AgendaLine(
             Text(
                 if (cleanLook()) "Show today's events here?" else "show today's events here?",
                 fontFamily = rowFont(),
-                fontSize = if (cleanLook()) 18.sp else 15.sp,
+                fontSize = if (cleanLook()) 18.sp else 16.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
             )
@@ -1258,7 +1278,9 @@ private fun AgendaLine(
             "Calendar access is off. Opens Newt Home's settings to turn it on.",
             onFix,
         )
-        is Agenda.Today -> AgendaRow(
+        is Agenda.Today -> if (cleanLook() && AgendaText.next(AgendaText.upcoming(agenda.events, now), now) != null) {
+            NextEventCard(agenda.events, now, time, onOpen)
+        } else AgendaRow(
             AgendaText.line(agenda.events, now, time).let { if (cleanLook()) it.replaceFirstChar { c -> c.uppercase() } else it },
             if (cleanLook()) MaterialTheme.colorScheme.onSurface else LocalTerminalColors.current.prompt,
             null,
@@ -1314,9 +1336,79 @@ private fun AgendaRow(text: String, color: Color, spoken: String?, onClick: () -
     }
 }
 
+/**
+ * The clean look's next event: "NEXT · IN 45 MIN" over "15:00 Dentist" and "+2 more today",
+ * so there's no mental math. Opens today's events.
+ */
+@Composable
+private fun NextEventCard(events: List<DayEvent>, now: Long, time: (Long) -> String, onOpen: () -> Unit) {
+    val upcoming = AgendaText.upcoming(events, now)
+    val next = AgendaText.next(upcoming, now) ?: return
+    val label = when {
+        next.allDay -> "TODAY"
+        AgendaText.isNow(next, now) -> "NOW · UNTIL ${time(next.end)}"
+        else -> listOfNotNull("NEXT", AgendaText.countdown(next.begin, now)?.uppercase()).joinToString(" · ")
+    }
+    val title = if (next.allDay) next.title else "${time(next.begin)} ${next.title}"
+    val more = upcoming.size - 1
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier
+            .padding(top = 10.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(neonOutline(), shape)
+            .clickable(onClickLabel = "Today's events", onClick = onOpen)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            next.color?.let {
+                CalendarDot(it)
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(label, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.5.sp, color = MaterialTheme.colorScheme.tertiary)
+        }
+        Text(title, fontFamily = rowFont(), fontWeight = FontWeight.Bold, fontSize = 21.sp, color = MaterialTheme.colorScheme.onSurface)
+        if (more > 0) {
+            Text("+$more more today", fontFamily = rowFont(), fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** A favorite as a big tile in the clean look, with "2 missed" as a red word-pill when there is one. */
+@Composable
+private fun FavoriteTile(app: LauncherApp, onOpen: (LauncherApp) -> Unit, onHold: (LauncherApp) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .heightIn(min = 84.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .combinedClickable(
+                onClickLabel = "Open",
+                onLongClickLabel = "More options",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onHold(app)
+                },
+                onClick = { onOpen(app) },
+            )
+            .padding(12.dp),
+    ) {
+        AppIcon(app, size = 40.dp)
+        Text(app.name, fontFamily = rowFont(), fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface)
+        app.alert?.let { NewtStateChip(it, NewtTone.Danger) }
+    }
+}
+
 /** The blue-to-purple outline used across Newt apps. */
 @Composable
-internal fun neonOutline(width: Dp = 1.5.dp) = BorderStroke(
+internal fun neonOutline(width: Dp = 2.dp) = BorderStroke(
     width,
     Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)),
 )
@@ -1424,10 +1516,10 @@ private fun AppRow(
             val alert = app.alert
             if (alert != null) {
                 // A word, not just a red dot, so it's never color alone.
-                Text(alert, fontFamily = rowFont(), fontSize = if (clean) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Text(alert, fontFamily = rowFont(), fontSize = if (clean) 17.sp else 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
             if (line != null) {
-                Text(line, fontFamily = rowFont(), fontSize = if (clean) 16.sp else 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(line, fontFamily = rowFont(), fontSize = if (clean) 16.sp else 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -1491,7 +1583,7 @@ private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
             Text(
                 if (command.ready) "${command.text} · Enter runs it" else "# ${command.text}",
                 fontFamily = NewtFonts.Mono,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (command.ready) prompt else MaterialTheme.colorScheme.onSurfaceVariant,
             )

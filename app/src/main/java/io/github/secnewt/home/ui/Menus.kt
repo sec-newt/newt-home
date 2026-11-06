@@ -1,5 +1,24 @@
 package io.github.secnewt.home.ui
 
+import io.github.secnewt.ui.NewtAction
+import io.github.secnewt.ui.NewtActionGrid
+import io.github.secnewt.ui.NewtButton
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.OutlinedTextField
+import io.github.secnewt.home.apps.HelpTopic
+import io.github.secnewt.ui.NewtSettingsCard
+import io.github.secnewt.ui.NewtSwitchRow
+import io.github.secnewt.ui.NewtPrimaryButton
+import io.github.secnewt.ui.NewtTone
+import io.github.secnewt.ui.newtGradient
+import io.github.secnewt.ui.onNewtGradient
+import io.github.secnewt.ui.neonFieldColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -245,60 +264,58 @@ fun HoldMenu(
                 // The app's own shortcuts first: they're what you'd hold an app to reach.
                 if (shortcuts.isNotEmpty()) {
                     MenuHeading("Jump to")
-                    if (cleanLook()) {
-                        ShortcutChips(shortcuts, app.name, onOpenShortcut)
+                    ShortcutChips(shortcuts, app.name, onOpenShortcut)
+                }
+                val actions = buildList {
+                    if (isFavorite) {
+                        add(NewtAction("Unfavorite", onToggleFavorite, Icons.Filled.Star, hint = "Stays in All apps"))
                     } else {
-                        for (shortcut in shortcuts) {
-                            MenuOption(
-                                shortcut.label,
-                                shortcut.description ?: "In ${app.name}",
-                                { onOpenShortcut(shortcut) },
-                            )
-                        }
+                        add(NewtAction("Favorite", onToggleFavorite, Icons.Filled.Star, hint = "On your home screen"))
                     }
-                    MenuHeading("Options")
+                    add(
+                        NewtAction(
+                            "Move to folder", { page = AppMenuPage.PICK_FOLDER }, FolderShape,
+                            hint = currentFolder?.let { "Now in ${folderLabel(it)}" },
+                        ),
+                    )
+                    if (isFavorite && canMoveUp) add(NewtAction("Move up", { onMove(-1) }, Icons.Filled.KeyboardArrowUp))
+                    if (isFavorite && canMoveDown) add(NewtAction("Move down", { onMove(1) }, Icons.Filled.KeyboardArrowDown))
+                    add(
+                        NewtAction(
+                            "Search words", { page = AppMenuPage.WORDS }, Icons.Filled.Search,
+                            hint = if (words.isEmpty()) "Like \"bank\"" else words.joinToString(", "),
+                        ),
+                    )
+                    if (isHidden) {
+                        add(NewtAction("Show", onToggleHidden, Icons.Filled.Check, hint = "Back in All apps"))
+                    } else {
+                        add(NewtAction("Hide", onToggleHidden, Icons.Filled.Close, hint = "Search still finds it"))
+                    }
                 }
-                if (isFavorite) {
-                    MenuOption("Remove from favorites", "It stays in All apps", onToggleFavorite, icon = Icons.Filled.Star)
-                    if (canMoveUp) MenuOption("Move up", "Higher in your favorites", { onMove(-1) }, icon = Icons.Filled.KeyboardArrowUp)
-                    if (canMoveDown) MenuOption("Move down", "Lower in your favorites", { onMove(1) }, icon = Icons.Filled.KeyboardArrowDown)
-                } else {
-                    MenuOption("Add to favorites", "Puts it on your home screen", onToggleFavorite, icon = Icons.Filled.Star)
-                }
-                MenuOption(
-                    "Move to folder",
-                    if (currentFolder != null) "Now in ${folderLabel(currentFolder)}" else "Not in a folder yet",
-                    { page = AppMenuPage.PICK_FOLDER },
-                    icon = FolderShape,
-                )
-                MenuOption(
-                    if (words.isEmpty()) "Add search words" else "Search words",
-                    if (words.isEmpty()) "Your own words that find it, like bank or maps" else words.joinToString(", "),
-                    { page = AppMenuPage.WORDS },
-                    icon = Icons.Filled.Search,
-                )
-                if (isHidden) {
-                    MenuOption("Show in lists", "Back in All apps and its folder", onToggleHidden, icon = Icons.Filled.Check)
-                } else {
-                    MenuOption("Hide from lists", "Leaves All apps and folders. Search still finds it", onToggleHidden, icon = Icons.Filled.Close)
-                }
+                NewtActionGrid(actions, modifier = Modifier.padding(vertical = 8.dp))
+                // Removing is the one thing that can't be undone here: red, and apart from the grid.
                 val from = app.from
                 val url = app.url
-                if (url != null) {
-                    MenuOption("Remove website", "Takes it off Newt Home. Opens $url", onRemoveShortcut, danger = true, icon = Icons.Filled.Delete)
-                } else if (from != null) {
-                    MenuOption(
-                        "Remove shortcut",
-                        "Takes it off Newt Home. You can add it again from $from",
-                        onRemoveShortcut,
-                        danger = true,
+                if (url != null || from != null) {
+                    NewtPrimaryButton(
+                        if (url != null) "Remove website" else "Remove shortcut",
+                        onClick = onRemoveShortcut,
                         icon = Icons.Filled.Delete,
+                        tone = NewtTone.Danger,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     )
-                    MenuOption("$from info", "Android's page for $from, which made this shortcut", onAppInfo, icon = Icons.Filled.Info)
-                } else {
-                    MenuOption("App info", "Android's page for this app", onAppInfo, icon = Icons.Filled.Info)
                 }
-                SheetButton("Cancel", onDismiss)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.height(IntrinsicSize.Min).padding(top = 4.dp)) {
+                    if (url == null) {
+                        NewtButton(
+                            if (from != null) "$from info" else "App info",
+                            onClick = onAppInfo,
+                            icon = Icons.Filled.Info,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                    NewtButton("Cancel", onClick = onDismiss, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
             }
             AppMenuPage.WORDS -> WordsField(
                 appName = app.name,
@@ -492,7 +509,7 @@ private fun NameField(
     if (problem != null) {
         Text(
             problem,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
         )
@@ -554,7 +571,7 @@ private fun WordsField(appName: String, initial: List<String>, onSave: (List<Str
     )
     Text(
         "Separate words with commas or spaces. Capitals don't matter.",
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
     )
@@ -569,7 +586,7 @@ private fun MenuHeading(text: String) {
         text,
         fontFamily = if (cleanLook()) NewtFonts.Display else NewtFonts.Mono,
         fontWeight = FontWeight.Bold,
-        fontSize = if (cleanLook()) 17.sp else 15.sp,
+        fontSize = if (cleanLook()) 17.sp else 16.sp,
         color = if (cleanLook()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
         modifier = Modifier
             .padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
@@ -618,7 +635,7 @@ private fun MenuOption(
                 fontSize = if (cleanLook()) 20.sp else 19.sp,
                 color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
-            Text(explanation, fontSize = if (cleanLook()) 16.sp else 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(explanation, fontSize = if (cleanLook()) 16.sp else 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -780,8 +797,8 @@ private fun CleanDay(events: List<DayEvent>, now: Long, time: (Long) -> String, 
 }
 
 /**
- * `help`: every command with an example. Tapping one puts it at the prompt to edit or run,
- * so nothing runs from this list by itself.
+ * `help`: a cheat sheet of commands grouped by what they do. Tapping one shows what it does
+ * and ▶ Try, which only puts it at the prompt: nothing runs from this list by itself.
  */
 @Composable
 fun HelpSheet(
@@ -792,30 +809,108 @@ fun HelpSheet(
     buttonsShown: Boolean = true,
     onSwitchButtons: (() -> Unit)? = null,
 ) {
-    val clean = cleanLook()
+    var query by rememberSaveable { mutableStateOf("") }
+    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+    val shown = commands.filter {
+        query.isBlank() || it.example.contains(query.trim(), ignoreCase = true) || it.does.contains(query.trim(), ignoreCase = true)
+    }
     MenuSheet(onDismiss = onDismiss, header = { SheetTitle("Commands") }) {
-        Text(
-            "Type one at the prompt and press Enter. Capitals don't matter, and app names always work too.",
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-        commands.forEach { MenuOption(if (clean) it.example else "~$ ${it.example}", it.does, onClick = { onPick(it.example) }) }
-        if (onSwitchLook != null) {
-            MenuOption(
-                if (clean) "Switch to the terminal look" else "Switch to the clean look",
-                if (clean) "The ~$ prompt, scanlines and the newt" else "Plain cards and words, like Newt Phone",
-                onClick = onSwitchLook,
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Find a command") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                singleLine = true,
+                colors = neonFieldColors(),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.fillMaxWidth(),
             )
+            if (shown.isEmpty()) {
+                Text("No command matches", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            HelpTopic.entries.forEach { topic ->
+                val inTopic = shown.filter { it.topic == topic }
+                if (inTopic.isNotEmpty()) {
+                    NewtSettingsCard(topic.title, icon = topicIcon(topic)) {
+                        CommandChips(inTopic, chosen) { chosen = if (chosen == it) null else it }
+                        inTopic.firstOrNull { it.example == chosen }?.let { help ->
+                            ChosenCommand(help, onTry = { onPick(help.example) })
+                        }
+                    }
+                }
+            }
+            if (onSwitchLook != null || onSwitchButtons != null) {
+                NewtSettingsCard("Screen", icon = Icons.Filled.Settings) {
+                    if (onSwitchLook != null) {
+                        NewtSwitchRow("Clean look", cleanLook(), { onSwitchLook() }, hint = "Plain cards and words, like Newt Phone")
+                    }
+                    if (onSwitchButtons != null) {
+                        NewtSwitchRow("Screen buttons", buttonsShown, { onSwitchButtons() }, hint = "Folders and All apps above the prompt")
+                    }
+                }
+            }
+            SheetButton("Close", onDismiss)
         }
-        if (onSwitchButtons != null) {
-            MenuOption(
-                if (buttonsShown) "Hide the screen buttons" else "Show the screen buttons",
-                if (buttonsShown) "Folders and All apps go; swiping still works" else "Folders and All apps above the prompt",
-                onClick = onSwitchButtons,
-            )
+    }
+}
+
+private fun topicIcon(topic: HelpTopic): ImageVector = when (topic) {
+    HelpTopic.TIME -> Icons.Filled.DateRange
+    HelpTopic.PEOPLE -> Icons.Filled.Person
+    HelpTopic.PHONE -> Icons.Filled.Settings
+    HelpTopic.APPS -> FolderShape
+}
+
+/** The commands in one group, as chips. The chosen one is filled. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CommandChips(commands: List<CommandHelp>, chosen: String?, onChoose: (String) -> Unit) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        commands.forEach { help ->
+            val selected = help.example == chosen
+            val shape = RoundedCornerShape(12.dp)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(shape)
+                    .then(if (selected) Modifier.background(newtGradient()) else Modifier)
+                    .border(2.5.dp, if (selected) Color.Transparent else MaterialTheme.colorScheme.secondary, shape)
+                    .selectable(selected = selected, role = Role.Button) { onChoose(help.example) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    help.example,
+                    fontFamily = NewtFonts.Mono,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = if (selected) onNewtGradient() else MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
-        SheetButton("Close", onDismiss)
+    }
+}
+
+/** What the chosen command does, in one line, with ▶ Try (puts it at the prompt). */
+@Composable
+private fun ChosenCommand(help: CommandHelp, onTry: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .padding(start = 14.dp, end = 14.dp, bottom = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(12.dp),
+    ) {
+        Text(help.does, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        NewtPrimaryButton("Try", onClick = onTry, icon = Icons.Filled.PlayArrow, tone = NewtTone.Good)
     }
 }
 
@@ -876,7 +971,7 @@ fun AddWebsiteSheet(onAdd: (name: String, url: String) -> Unit, onDismiss: () ->
         if (tried) {
             Text(
                 if (address.isBlank()) "Type the site's address first." else "That doesn't look like a web address.",
-                fontSize = 15.sp,
+                fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
             )
@@ -891,7 +986,7 @@ fun AddWebsiteSheet(onAdd: (name: String, url: String) -> Unit, onDismiss: () ->
         )
         Text(
             "It opens in your browser and shows in All apps and search.",
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
         )
@@ -1247,7 +1342,7 @@ private fun HourCell(index: Int, hour: WeatherHour, time: (Long) -> String) {
         Text(
             hour.precipChance?.takeIf { it > 0 }?.let { "$it%" } ?: " ",
             fontFamily = font,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             color = NewtWeather.lowColor(),
         )
     }

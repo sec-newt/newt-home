@@ -185,7 +185,7 @@ fun BootLine(command: String, bootKey: Int, animate: Boolean, content: @Composab
             }
         },
         fontFamily = NewtFonts.Mono,
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.clearAndSetSemantics { },
     )

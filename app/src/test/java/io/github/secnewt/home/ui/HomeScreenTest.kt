@@ -53,6 +53,14 @@ import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.ui.theme.HomeTheme
 import org.junit.Assert.assertEquals
+import io.github.secnewt.test.assertTextAtLeast
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
+import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -104,6 +112,8 @@ class HomeScreenTest {
                 failureLevel = RoborazziATFAccessibilityChecker.CheckLevel.Warning,
             )
         )
+        // The UI refresh's floor: no text under 16sp at the phone's normal font size.
+        if (fontScale == 1f) composeRule.assertTextAtLeast(16f)
     }
 
     /**
@@ -537,7 +547,7 @@ class HomeScreenTest {
     @Test
     fun eventsLineShowsTheNextEvent() {
         composeRule.setContent { HomeTheme(darkTheme = true) { Home(agenda = Agenda.Today(events)) } }
-        composeRule.onNodeWithText("next: 15:00 Dentist · 2 more today").assertIsDisplayed()
+        composeRule.onNodeWithText("next: 15:00 Dentist · in 3 h · 2 more today").assertIsDisplayed()
     }
 
     private fun commandResults(query: String, text: String, ready: Boolean) =
@@ -614,7 +624,7 @@ class HomeScreenTest {
         "search_words_200_percent",
         dark = false,
         fontScale = 2f,
-        before = { composeRule.onNodeWithText("Add search words").performClick() },
+        before = { composeRule.onNodeWithText("Search words").performClick() },
     ) {
         WithHoldMenu(menuOpen = true, menu = { AppMenu(app("Signal"), isFavorite = true, folder = null) }) { Home() }
     }
@@ -1014,7 +1024,7 @@ class HomeScreenTest {
                 WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}, onSwitchLook = { switched = true }) }) { Home() }
             }
         }
-        composeRule.onNodeWithText("Switch to the clean look").performScrollTo().performClick()
+        composeRule.onNodeWithText("Clean look").performScrollTo().assertIsOff().performClick()
         assertEquals(true, switched)
     }
 
@@ -1139,5 +1149,121 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Folder's name").performTextInput("  Music  and podcasts ")
         composeRule.onNodeWithText("Make folder").performClick()
         assertEquals("Music and podcasts", made)
+    }
+
+    private fun showHelp(onPick: (String) -> Unit = {}) = composeRule.setContent {
+        HomeTheme(darkTheme = true) {
+            WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = onPick, onDismiss = {}, onSwitchLook = {}) }) { Home() }
+        }
+    }
+
+    @Test
+    fun helpGroupsCommandsByTopic() {
+        showHelp()
+        composeRule.onNodeWithText("Time").assertExists()
+        composeRule.onNodeWithText("People").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Apps & look").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun tappingACommandShowsItsLineAndTryOnlyFillsThePrompt() {
+        val picked = mutableListOf<String>()
+        showHelp(onPick = { picked += it })
+        composeRule.onNodeWithText("Try").assertDoesNotExist()
+        composeRule.onNodeWithText("timer 10").performClick()
+        composeRule.onNodeWithText("A 10 minute timer. Also timer 90s, timer 1h 30m").assertExists()
+        assertEquals(emptyList<String>(), picked)
+        composeRule.onNodeWithText("Try").performClick()
+        assertEquals(listOf("timer 10"), picked)
+    }
+
+    @Test
+    fun findACommandFilters() {
+        showHelp()
+        composeRule.onNode(hasSetTextAction() and hasText("Find a command")).performTextInput("wif")
+        composeRule.onNodeWithText("wifi").assertExists()
+        composeRule.onNodeWithText("timer 10").assertDoesNotExist()
+    }
+
+    @Test
+    fun findACommandWithNoMatchSaysSo() {
+        showHelp()
+        composeRule.onNode(hasSetTextAction() and hasText("Find a command")).performTextInput("zz")
+        composeRule.onNodeWithText("No command matches").assertExists()
+        composeRule.onNodeWithText("Clean look").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun holdMenuTilesAreButtonsAndOpenTheirPage() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { AppMenu(app("Signal"), isFavorite = true, folder = null) } }
+        composeRule.onNodeWithText("Unfavorite").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        composeRule.onNodeWithText("Move to folder").performClick()
+        composeRule.onNodeWithText("New folder").assertExists()
+    }
+
+    @Test
+    fun removingAWebsiteSitsApartFromTheGrid() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { AppMenu(app("Bank"), isFavorite = false, folder = null) } }
+        val hide = composeRule.onNodeWithText("Hide").fetchSemanticsNode().boundsInRoot
+        val remove = composeRule.onNodeWithText("Remove website").fetchSemanticsNode().boundsInRoot
+        assertTrue("Remove is below the grid", remove.top >= hide.bottom)
+    }
+
+    @Test
+    fun holdMenuCancelCloses() {
+        var closed = false
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) {
+                HoldMenu(
+                    app = app("Signal"), isFavorite = false, canMoveUp = false, canMoveDown = false, folderNames = emptyList(),
+                    currentFolder = null, onToggleFavorite = {}, onMove = {}, onMoveToFolder = {}, onMoveToNewFolder = {},
+                    onAppInfo = {}, onDismiss = { closed = true },
+                )
+            }
+        }
+        composeRule.onNodeWithText("Cancel").performScrollTo().performClick()
+        assertTrue(closed)
+    }
+
+    @Test
+    fun cleanNextEventIsACardWithACountdown() {
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { Home(agenda = Agenda.Today(events)) } } }
+        composeRule.onNodeWithText("NEXT · IN 3 H", useUnmergedTree = true).assertExists()
+        composeRule.onNodeWithText("15:00 Dentist", useUnmergedTree = true).assertExists()
+        composeRule.onNodeWithText("+2 more today", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun cleanFavoritesAreTwoColumnTilesWithAMissedPill() {
+        val withMissed = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }
+        composeRule.setContent { HomeTheme(darkTheme = true) { Clean { Home(favs = withMissed) } } }
+        composeRule.onNodeWithText("2 missed", useUnmergedTree = true).assertExists()
+        val first = composeRule.onNodeWithText(withMissed[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithText(withMissed[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val width = composeRule.onRoot().fetchSemanticsNode().size.width
+        assertTrue("side by side", second.left >= width / 2f && kotlin.math.abs(second.top - first.top) < 4f)
+    }
+
+    @Test
+    fun cleanHomeTilesDark() = render("clean_home_tiles_dark", dark = true) {
+        Clean { Home(favs = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }, weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanHomeTilesLargeText() = render("clean_home_tiles_200_percent", dark = false, fontScale = 2f) {
+        Clean { Home(favs = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }, weather = sunny, agenda = Agenda.Today(events)) }
+    }
+
+    @Test
+    fun cleanFavoritesStackOneToARowAtLargeText() {
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
+                HomeTheme(darkTheme = true) { Clean { Home() } }
+            }
+        }
+        val first = composeRule.onNodeWithText(favorites[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithText(favorites[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("one to a row", second.top > first.bottom)
     }
 }

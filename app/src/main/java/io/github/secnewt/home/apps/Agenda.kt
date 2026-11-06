@@ -54,10 +54,26 @@ object AgendaText {
         val first = when {
             next.allDay -> "today: ${next.title}"
             isNow(next, now) -> "now: ${next.title} until ${time(next.end)}"
-            else -> "next: ${time(next.begin)} ${next.title}"
+            else -> listOfNotNull("next: ${time(next.begin)} ${next.title}", countdown(next.begin, now)).joinToString(" · ")
         }
         val more = upcoming.size - 1
         return if (more > 0) "$first · $more more today" else first
+    }
+
+    /**
+     * How long until [startMillis]: "in 45 min", "in 3 h", "in 1 h 15 min" (a part minute counts
+     * as a minute). Null once it has started, so nothing ever says "in 0 min".
+     */
+    fun countdown(startMillis: Long, nowMillis: Long): String? {
+        if (startMillis <= nowMillis) return null
+        val minutes = (startMillis - nowMillis + 59_999) / 60_000
+        val h = minutes / 60
+        val m = minutes % 60
+        return when {
+            h == 0L -> "in $m min"
+            m == 0L -> "in $h h"
+            else -> "in $h h $m min"
+        }
     }
 
     /** "3:00" for a timed event, "all day" for an all-day one. */

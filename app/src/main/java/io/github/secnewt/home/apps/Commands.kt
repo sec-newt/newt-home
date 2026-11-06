@@ -48,8 +48,11 @@ sealed interface CommandMatch {
     data class Incomplete(val word: String, val hint: String) : CommandMatch
 }
 
-/** One line of `help`: what to type and what it does. */
-data class CommandHelp(val example: String, val does: String)
+/** The groups in `help`, in the order they're shown. */
+enum class HelpTopic(val title: String) { TIME("Time"), PEOPLE("People"), PHONE("Phone"), APPS("Apps & look") }
+
+/** One line of `help`: what to type, what it does, and which group it's in. */
+data class CommandHelp(val example: String, val does: String, val topic: HelpTopic)
 
 /**
  * The prompt's short list of commands. Capitals and extra spaces never matter, and a
@@ -58,19 +61,19 @@ data class CommandHelp(val example: String, val does: String)
 object Commands {
 
     val HELP = listOf(
-        CommandHelp("timer 10", "A 10 minute timer. Also timer 90s, timer 1h 30m"),
-        CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845"),
-        CommandHelp("flashlight", "Turns the flashlight on or off. Also torch"),
-        CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call"),
-        CommandHelp("wifi", "Wi-Fi on or off and networks"),
-        CommandHelp("bluetooth", "Bluetooth settings"),
-        CommandHelp("files", "Opens your files app"),
-        CommandHelp("ls", "Every app, A to Z"),
-        CommandHelp("ask what's a good buttermilk substitute", "Asks the Claude app. ask on its own opens it"),
-        CommandHelp("sys", "This phone's system info. Tapping the status line does the same"),
-        CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back"),
-        CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back"),
-        CommandHelp("help", "This list"),
+        CommandHelp("timer 10", "A 10 minute timer. Also timer 90s, timer 1h 30m", HelpTopic.TIME),
+        CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845", HelpTopic.TIME),
+        CommandHelp("flashlight", "Turns the flashlight on or off. Also torch", HelpTopic.PHONE),
+        CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call", HelpTopic.PEOPLE),
+        CommandHelp("wifi", "Wi-Fi on or off and networks", HelpTopic.PHONE),
+        CommandHelp("bluetooth", "Bluetooth settings", HelpTopic.PHONE),
+        CommandHelp("files", "Opens your files app", HelpTopic.APPS),
+        CommandHelp("ls", "Every app, A to Z", HelpTopic.APPS),
+        CommandHelp("ask what's a good buttermilk substitute", "Asks the Claude app. ask on its own opens it", HelpTopic.APPS),
+        CommandHelp("sys", "This phone's system info. Tapping the status line does the same", HelpTopic.PHONE),
+        CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back", HelpTopic.APPS),
+        CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back", HelpTopic.APPS),
+        CommandHelp("help", "This list", HelpTopic.APPS),
     )
 
     fun parse(typed: String): CommandMatch? {
