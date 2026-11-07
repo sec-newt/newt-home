@@ -34,6 +34,21 @@ sealed interface Command {
 
     /** [show] true to show the Folders and All apps buttons, false to hide them, or null to switch. */
     data class Buttons(val show: Boolean?) : Command
+
+    /** A home screen setting ([HomeSwitch]) [on], off, or null to switch it the other way. */
+    data class Switch(val what: HomeSwitch, val on: Boolean?) : Command
+}
+
+/**
+ * Home screen settings that are simply on or off, each with its own command word. All are
+ * also switches at the end of `help`, so none needs typing. The word alone isn't a command
+ * (`sky` might be the start of an app's name), and the newt's word is `pet`, since every
+ * Newt app starts with "newt".
+ */
+enum class HomeSwitch(val word: String, val title: String, val hint: String, val onWord: String, val offWord: String) {
+    SKY("sky", "Sky colors", "Outlines follow the time of day and the weather", "on", "off"),
+    NEWT("pet", "Newt by the clock", "Clean look: shows how the phone and the day are going", "on", "off"),
+    BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small"),
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -73,6 +88,9 @@ object Commands {
         CommandHelp("sys", "This phone's system info. Tapping the status line does the same", HelpTopic.PHONE),
         CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back", HelpTopic.APPS),
         CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back", HelpTopic.APPS),
+        CommandHelp("sky off", "Plain blue and purple outlines. sky on lets them follow the time and the weather", HelpTopic.APPS),
+        CommandHelp("pet off", "Hides the newt by the clock. pet on brings it back", HelpTopic.APPS),
+        CommandHelp("tiles big", "Taller favorites, icon above the name. tiles small fits more on the screen", HelpTopic.APPS),
         CommandHelp("help", "This list", HelpTopic.APPS),
     )
 
@@ -119,11 +137,18 @@ object Commands {
                 "off", "hide" -> CommandMatch.Ready(Command.Buttons(false))
                 else -> CommandMatch.Incomplete(word, "buttons on or buttons off")
             }
-            else -> null
+            else -> HomeSwitch.entries.firstOrNull { it.word == word }?.let { sw ->
+                when (lower) {
+                    sw.onWord, "on", "show" -> CommandMatch.Ready(Command.Switch(sw, true))
+                    sw.offWord, "off", "hide" -> CommandMatch.Ready(Command.Switch(sw, false))
+                    else -> CommandMatch.Incomplete(word, "${sw.word} ${sw.onWord} or ${sw.word} ${sw.offWord}")
+                }
+            }
         }
     }
 
-    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme", "buttons")
+    private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme", "buttons") +
+        HomeSwitch.entries.map { it.word }
 
     /**
      * Whether what's typed could still become a command (`hel` on the way to `help`). The
@@ -216,6 +241,23 @@ object Commands {
             true -> "show the Folders and All apps buttons"
             false -> "hide the Folders and All apps buttons"
             null -> "show or hide the Folders and All apps buttons"
+        }
+        is Command.Switch -> when (command.what) {
+            HomeSwitch.SKY -> when (command.on) {
+                true -> "let the colors follow the time of day and the weather"
+                false -> "keep the usual blue and purple colors"
+                null -> "switch sky colors on or off"
+            }
+            HomeSwitch.NEWT -> when (command.on) {
+                true -> "show the newt by the clock"
+                false -> "hide the newt by the clock"
+                null -> "show or hide the newt by the clock"
+            }
+            HomeSwitch.BIG_TILES -> when (command.on) {
+                true -> "use big favorite tiles"
+                false -> "use small favorite tiles, so more fit"
+                null -> "switch between big and small favorite tiles"
+            }
         }
     }
 }

@@ -61,6 +61,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.Role
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.assert
+import io.github.secnewt.home.apps.NewtMood
+import io.github.secnewt.home.apps.SkyTone
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -158,6 +160,8 @@ class HomeScreenTest {
         weather: WeatherNow? = null,
         headsUp: String? = null,
         showButtons: Boolean = true,
+        newtMood: NewtMood? = null,
+        bigTiles: Boolean = false,
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -194,6 +198,8 @@ class HomeScreenTest {
         weather = weather,
         headsUp = headsUp,
         showButtons = showButtons,
+        newtMood = newtMood,
+        bigTiles = bigTiles,
     )
 
     /** The screen squeezed into what an open keyboard leaves (about the top 60%). */
@@ -1241,7 +1247,8 @@ class HomeScreenTest {
         val first = composeRule.onNodeWithText(withMissed[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val second = composeRule.onNodeWithText(withMissed[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val width = composeRule.onRoot().fetchSemanticsNode().size.width
-        assertTrue("side by side", second.left >= width / 2f && kotlin.math.abs(second.top - first.top) < 4f)
+        // Same row: a name with "2 missed" under it sits a little higher than one without.
+        assertTrue("side by side", second.left >= width / 2f && second.top < first.bottom && second.bottom > first.top)
     }
 
     @Test
@@ -1265,5 +1272,68 @@ class HomeScreenTest {
         val first = composeRule.onNodeWithText(favorites[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val second = composeRule.onNodeWithText(favorites[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("one to a row", second.top > first.bottom)
+    }
+
+    // The redesigned top of the clean home screen: sky colors, the newt, and small tiles.
+    private val eight = apps.take(8).map { if (it.name == "Phone") it.copy(alert = "2 missed") else it }
+
+    @Test
+    fun cleanHomeBigTilesDark() = render("clean_home_big_tiles_dark", dark = true) {
+        Clean { Home(favs = phoneMissed, weather = sunny, agenda = Agenda.Today(events), bigTiles = true) }
+    }
+
+    @Test
+    fun cleanHomeNewtSunnyDay() = render("clean_home_newt_day_dark", dark = true) {
+        SkyTheme(SkyTone.DAY) { Clean { Home(favs = eight, weather = sunny, agenda = Agenda.Today(events), newtMood = NewtMood.SUNNY) } }
+    }
+
+    @Test
+    fun cleanHomeNewtRainSoonDusk() = render("clean_home_newt_rain_dark", dark = true) {
+        SkyTheme(SkyTone.RAIN) {
+            Clean { Home(favs = eight, weather = sunny.copy(condition = "RAIN"), headsUp = "Rain likely around 4 PM", agenda = Agenda.Today(events), newtMood = NewtMood.RAIN_SOON) }
+        }
+    }
+
+    @Test
+    fun cleanHomeNewtDuskLight() = render("clean_home_newt_dusk_light", dark = false) {
+        SkyTheme(SkyTone.DUSK) { Clean { Home(favs = eight, weather = sunny, agenda = Agenda.Today(events), newtMood = NewtMood.LORDS_DAY) } }
+    }
+
+    @Test
+    fun cleanHomeNewtSleeping() = render("clean_home_newt_night_dark", dark = true) {
+        Clean { Home(favs = eight, newtMood = NewtMood.SLEEPING) }
+    }
+
+    @Test
+    fun cleanHomeNewtStormLowBattery() = render("clean_home_newt_storm_dark", dark = true) {
+        SkyTheme(SkyTone.STORM) {
+            Clean { Home(favs = eight, weather = stormWarning, status = DeviceStatus(battery = 9, connection = Connection.WIFI), newtMood = NewtMood.LOW_BATTERY) }
+        }
+    }
+
+    @Test
+    fun cleanHomeNewtLargeText() = render("clean_home_newt_200_percent", dark = true, fontScale = 2f) {
+        SkyTheme(SkyTone.DUSK) { Clean { Home(favs = eight, weather = sunny, agenda = Agenda.Today(events), newtMood = NewtMood.CHARGING) } }
+    }
+
+    @Test
+    fun eightSmallFavoritesFitWithoutScrolling() {
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) { Clean { Home(favs = eight, weather = sunny, agenda = Agenda.Today(events), newtMood = NewtMood.SUNNY) } }
+        }
+        composeRule.onNodeWithText(eight.last().name, useUnmergedTree = true).assertIsDisplayed()
+        val last = composeRule.onNodeWithText(eight.last().name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val buttons = composeRule.onNodeWithContentDescription("All apps").fetchSemanticsNode().boundsInRoot
+        assertTrue("the last favorite is above the buttons", last.bottom <= buttons.top)
+    }
+
+    @Test
+    fun tappingTheNewtShowsThePhoneStatus() {
+        var tapped = false
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) { Clean { Home(newtMood = NewtMood.RAIN_SOON, onStatusTap = { tapped = true }) } }
+        }
+        composeRule.onNodeWithContentDescription("Newt: rain soon").performClick()
+        assertTrue(tapped)
     }
 }

@@ -28,6 +28,21 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   clean look: plain cards and words, like Newt Phone, with every feature the same. Type
   `look clean` or `look terminal` at the prompt, or use the button at the end of `help`.
   Newt Home remembers your choice.
+- **Sky colors.** In both looks, the outlines and headings follow the time of day (amber at
+  dawn, cyan by day, purple and orange at dusk, the usual blue and purple at night), and the
+  weather wins when Newt Weather is sharing: steel blue for rain, icy for snow, amber and red
+  for a storm or warning. Only those accents change; text colors never do, and every sky color
+  keeps 7:1 contrast (a test checks each one). `sky off` keeps the usual colors.
+- **The newt by the clock (clean look).** The newt from the app icon sits beside the time, in
+  the sky's colors, with a small badge and a word for what's going on: `storm warning`,
+  `battery low` (it droops), `charging`, `rain` or `rain soon`, `snow`, `Lord's day` (Sunday
+  morning), `sleeping` (late at night, eyes closed) or `sunny`. With nothing to say it's just
+  the newt. It blinks now and then unless animations are off. Tap it for the phone's status.
+  `pet off` hides it.
+- **Small tiles (clean look).** Favorites show the icon beside the name, so eight fit with
+  room to spare; the date and weather share a line. `tiles big` brings back the tall tiles.
+- **Every one of these is a switch.** At the end of `help`, under **Screen**: Sky colors,
+  Newt by the clock and Big tiles, next to Clean look and Screen buttons.
 - **Swipe down to close.** Every card that slides up (the calendar, commands, app
   menus and the rest) closes with a swipe down, as well as with back or tapping outside.
   It follows your finger, so a short drag springs back.

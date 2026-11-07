@@ -2,6 +2,10 @@ package io.github.secnewt.home.ui
 
 import io.github.secnewt.ui.NewtStateChip
 import io.github.secnewt.ui.NewtTone
+import io.github.secnewt.ui.color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import io.github.secnewt.home.apps.DayEvent
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
@@ -121,6 +125,7 @@ import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
+import io.github.secnewt.home.apps.NewtMood
 import io.github.secnewt.home.ui.theme.LocalTerminalColors
 import io.github.secnewt.ui.NewtFonts
 import kotlin.math.absoluteValue
@@ -247,6 +252,8 @@ fun HomeScreen(
     headsUp: String? = null,
     onHearWeather: () -> Unit = {},
     showButtons: Boolean = true,
+    newtMood: NewtMood? = null,
+    bigTiles: Boolean = false,
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -286,6 +293,7 @@ fun HomeScreen(
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
                             weather, onWeather, headsUp, onHearWeather, showButtons,
+                            newtMood, bigTiles, onStatusTap,
                         )
                     }
                 }
@@ -333,6 +341,9 @@ private fun HomePage(
     headsUp: String?,
     onHearWeather: () -> Unit,
     showButtons: Boolean,
+    newtMood: NewtMood?,
+    bigTiles: Boolean,
+    onStatusTap: () -> Unit,
 ) {
     // While typing, the results get all the room the keyboard leaves: the clock, weather,
     // events and buttons step aside until the prompt is cleared.
@@ -361,6 +372,7 @@ private fun HomePage(
                                 dateLabel = if (agenda is Agenda.Today) "Today's events" else "Open Calendar",
                                 onDateHold = onDateHold,
                                 weather = weather?.let { w -> { WeatherLine(w, onWeather, onHearWeather) } },
+                                newt = newtMood?.let { mood -> { NewtBuddy(mood, animateBoot, onStatusTap) } },
                             )
                             weather?.let { WarningLine(it, onWeather) }
                             if (weather != null && headsUp != null) HeadsUpLine(headsUp, onWeather)
@@ -375,7 +387,18 @@ private fun HomePage(
                     if (favorites.isEmpty()) {
                         item { Hint("# press and hold any app to add it here") }
                     }
-                    if (clean) {
+                    if (clean && !bigTiles) {
+                        // Small tiles, two to a row: the icon beside the name, so twice as many
+                        // fit before anything scrolls.
+                        items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 10.dp).height(IntrinsicSize.Min),
+                            ) {
+                                pair.forEach { SmallFavoriteTile(it, onOpen, onHold, Modifier.weight(1f).fillMaxHeight()) }
+                            }
+                        }
+                    } else if (clean) {
                         // Big tiles, two to a row: twice the tap area, and a missed-call pill you can't miss.
                         items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
                             Row(
@@ -1033,9 +1056,10 @@ private fun ClockAndDate(
     dateLabel: String = "Open Calendar",
     onDateHold: () -> Unit = {},
     weather: (@Composable () -> Unit)? = null,
+    newt: (@Composable () -> Unit)? = null,
 ) {
     if (cleanLook()) {
-        CleanClockAndDate(clock, date, onClock, onDate, modifier, dateLabel, onDateHold, weather)
+        CleanClockAndDate(clock, date, onClock, onDate, modifier, dateLabel, onDateHold, weather, newt)
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -1081,8 +1105,11 @@ private fun ClockAndDate(
     }
 }
 
-/** The clean look's clock: big and plain, with the date under it. Each still opens its app. */
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * The clean look's clock: big and plain, with the newt beside it when it's on. The date and
+ * the weather share one line when they fit (they wrap at big text). Each still opens its app.
+ */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun CleanClockAndDate(
     clock: String,
@@ -1093,36 +1120,70 @@ private fun CleanClockAndDate(
     dateLabel: String,
     onDateHold: () -> Unit,
     weather: (@Composable () -> Unit)?,
+    newt: (@Composable () -> Unit)?,
 ) {
-    Column(modifier) {
-        Box(
-            Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClickLabel = "Open Clock", onClick = onClock)
-                .padding(horizontal = 4.dp)
-                .semantics { heading() },
-        ) {
-            Text(clock, fontFamily = NewtFonts.Display, fontWeight = FontWeight.Bold, fontSize = 72.sp, lineHeight = 76.sp)
+    Row(modifier.fillMaxWidth().skyGlow(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Box(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClickLabel = "Open Clock", onClick = onClock)
+                    .padding(horizontal = 4.dp)
+                    .semantics { heading() },
+            ) {
+                Text(clock, fontFamily = NewtFonts.Display, fontWeight = FontWeight.Bold, fontSize = 72.sp, lineHeight = 76.sp)
+            }
+            FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .combinedClickable(
+                            onClickLabel = dateLabel,
+                            onLongClickLabel = "Show or hide today's events",
+                            onLongClick = onDateHold,
+                            onClick = onDate,
+                        )
+                        .padding(horizontal = 4.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(date, fontFamily = NewtFonts.Body, fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (weather != null) {
+                    Spacer(Modifier.width(8.dp))
+                    weather()
+                }
+            }
         }
-        Box(
-            Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .combinedClickable(
-                    onClickLabel = dateLabel,
-                    onLongClickLabel = "Show or hide today's events",
-                    onLongClick = onDateHold,
-                    onClick = onDate,
-                )
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(date, fontFamily = NewtFonts.Body, fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        weather?.invoke()
+        newt?.invoke()
     }
 }
+
+/**
+ * A faint glow of the sky's color behind the clock. Faint enough that text on it keeps 7:1
+ * contrast (SkyTest checks the brightest point).
+ */
+@Composable
+private fun Modifier.skyGlow(): Modifier {
+    val color = MaterialTheme.colorScheme.primary.copy(alpha = SKY_GLOW_ALPHA)
+    return drawBehind {
+        // Centered toward the newt and fully faded before any edge, so it never shows a box.
+        val radius = minOf(size.height * 0.5f, size.width * 0.5f)
+        drawCircle(
+            Brush.radialGradient(
+                listOf(color, Color.Transparent),
+                center = Offset(size.width - radius * 0.9f, size.height / 2f),
+                radius = radius,
+            ),
+            radius = radius,
+            center = Offset(size.width - radius * 0.9f, size.height / 2f),
+        )
+    }
+}
+
+/** How strong the glow behind the clock is at its brightest. */
+internal const val SKY_GLOW_ALPHA = 0.14f
 
 /**
  * The weather by the date: an icon, the temperature now, and today's high (↑, warm) or
@@ -1403,6 +1464,43 @@ private fun FavoriteTile(app: LauncherApp, onOpen: (LauncherApp) -> Unit, onHold
         AppIcon(app, size = 40.dp)
         Text(app.name, fontFamily = rowFont(), fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface)
         app.alert?.let { NewtStateChip(it, NewtTone.Danger) }
+    }
+}
+
+/**
+ * A favorite as a small tile: the icon beside the name, with "2 missed" in red under the
+ * name when there is one. Half the height of the big tile, so more fit without scrolling.
+ */
+@Composable
+private fun SmallFavoriteTile(app: LauncherApp, onOpen: (LauncherApp) -> Unit, onHold: (LauncherApp) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier
+            .heightIn(min = 64.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .combinedClickable(
+                onClickLabel = "Open",
+                onLongClickLabel = "More options",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onHold(app)
+                },
+                onClick = { onOpen(app) },
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        AppIcon(app, size = 38.dp)
+        Column {
+            Text(app.name, fontFamily = rowFont(), fontWeight = FontWeight.Bold, fontSize = 19.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface)
+            app.alert?.let {
+                Text(it, fontFamily = NewtFonts.Mono, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NewtTone.Danger.color())
+            }
+        }
     }
 }
 

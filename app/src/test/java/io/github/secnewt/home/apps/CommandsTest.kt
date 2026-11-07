@@ -126,4 +126,23 @@ class CommandsTest {
         assertEquals("find Mom in your contacts", Commands.describe(Command.Call("Mom"), time))
         assertEquals("open your phone app (or type a name: call mom)", Commands.describe(Command.Call(""), time))
     }
+
+    @Test
+    fun `sky, pet and tiles switch home screen settings`() {
+        assertEquals(Command.Switch(HomeSwitch.SKY, false), ready("sky off"))
+        assertEquals(Command.Switch(HomeSwitch.SKY, true), ready("Sky On"))
+        assertEquals(Command.Switch(HomeSwitch.NEWT, false), ready("pet off"))
+        assertEquals(Command.Switch(HomeSwitch.BIG_TILES, true), ready("tiles big"))
+        assertEquals(Command.Switch(HomeSwitch.BIG_TILES, false), ready("tiles small"))
+        assertEquals(Command.Switch(HomeSwitch.BIG_TILES, false), ready("tiles off"))
+    }
+
+    @Test
+    fun `a switch word alone asks for on or off, so Enter still opens an app`() {
+        assertTrue(Commands.parse("sky") is CommandMatch.Incomplete)
+        assertTrue(Commands.parse("pet") is CommandMatch.Incomplete)
+        assertTrue(Commands.parse("sky blue") is CommandMatch.Incomplete)
+        // Every Newt app starts with "newt", so it's never a command.
+        assertEquals(null, Commands.parse("newt"))
+    }
 }

@@ -37,7 +37,11 @@ import io.github.secnewt.home.apps.LauncherApp
 import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
+import io.github.secnewt.home.apps.HomeSwitch
+import io.github.secnewt.home.apps.NewtMood
 import io.github.secnewt.home.apps.Profiles
+import io.github.secnewt.home.apps.Sky
+import io.github.secnewt.home.apps.SkyTone
 import io.github.secnewt.home.apps.SearchWords
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -64,6 +68,7 @@ fun HomeRoute(
     animateBoot: Boolean,
     status: DeviceStatus,
     showButtons: Boolean = true,
+    switches: Map<HomeSwitch, Boolean> = emptyMap(),
     onOpen: (LauncherApp) -> Unit,
     onFavoritesChange: (List<String>) -> Unit,
     onFoldersChange: (List<Folder>) -> Unit,
@@ -108,6 +113,9 @@ fun HomeRoute(
     var helpOpen by rememberSaveable { mutableStateOf(false) }
     var addWebsite by rememberSaveable { mutableStateOf(false) }
     var sys by remember { mutableStateOf<SystemInfo?>(null) }
+
+    // Sky colors and the newt start on; big tiles start off.
+    fun isOn(what: HomeSwitch): Boolean = switches[what] ?: (what != HomeSwitch.BIG_TILES)
 
     fun closeSheets() {
         menuFor = null
@@ -391,6 +399,8 @@ fun HomeRoute(
                 onSwitchLook = { runCommand(Command.Look(null)) },
                 buttonsShown = showButtons,
                 onSwitchButtons = { runCommand(Command.Buttons(null)) },
+                switches = { isOn(it) },
+                onSwitch = { what, on -> runCommand(Command.Switch(what, on)) },
             )
         } else if (newFolder) {
             NewFolderSheet(
@@ -405,6 +415,22 @@ fun HomeRoute(
         }
     }
 
+    val hourNow = Calendar.getInstance().apply { timeInMillis = now }
+    val headsUp = WeatherText.headsUp(weatherHours(), time)
+    val tone = if (isOn(HomeSwitch.SKY)) Sky.of(hourNow.get(Calendar.HOUR_OF_DAY), weather) else SkyTone.NIGHT
+    val mood = if (isOn(HomeSwitch.NEWT)) {
+        NewtMood.of(
+            hour = hourNow.get(Calendar.HOUR_OF_DAY),
+            dayOfWeek = hourNow.get(Calendar.DAY_OF_WEEK),
+            weather = weather,
+            status = status,
+            rainSoon = weather != null && (headsUp?.startsWith("Rain") == true || headsUp?.startsWith("Storms") == true),
+        )
+    } else {
+        null
+    }
+
+    SkyTheme(tone) {
     WithHoldMenu(menuOpen = held != null || heldFolder != null || newFolder || (agendaOpen && today != null) || helpOpen || addWebsite || sys != null || weatherOpen || askHideEvents, menu = menu) {
         HomeScreen(
             clock = clock,
@@ -492,8 +518,11 @@ fun HomeRoute(
                 closeSheets()
                 hours = weatherHours()
             },
-            headsUp = WeatherText.headsUp(weatherHours(), time),
+            headsUp = headsUp,
             onHearWeather = { weather?.let { onSpeak(WeatherText.spokenWithHeadsUp(it, weatherHours(), time)) } },
+            newtMood = mood,
+            bigTiles = isOn(HomeSwitch.BIG_TILES),
         )
+    }
     }
 }
