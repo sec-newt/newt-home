@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.OutlinedTextField
 import io.github.secnewt.home.apps.HelpTopic
+import io.github.secnewt.home.apps.HomeSwitch
 import io.github.secnewt.ui.NewtSettingsCard
 import io.github.secnewt.ui.NewtSwitchRow
 import io.github.secnewt.ui.NewtPrimaryButton
@@ -808,6 +809,8 @@ fun HelpSheet(
     onSwitchLook: (() -> Unit)? = null,
     buttonsShown: Boolean = true,
     onSwitchButtons: (() -> Unit)? = null,
+    switches: ((HomeSwitch) -> Boolean)? = null,
+    onSwitch: (HomeSwitch, Boolean) -> Unit = { _, _ -> },
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var chosen by rememberSaveable { mutableStateOf<String?>(null) }
@@ -847,6 +850,11 @@ fun HelpSheet(
                     }
                     if (onSwitchButtons != null) {
                         NewtSwitchRow("Screen buttons", buttonsShown, { onSwitchButtons() }, hint = "Folders and All apps above the prompt")
+                    }
+                    if (switches != null) {
+                        HomeSwitch.entries.forEach { what ->
+                            NewtSwitchRow(what.title, switches(what), { onSwitch(what, it) }, hint = what.hint)
+                        }
                     }
                 }
             }

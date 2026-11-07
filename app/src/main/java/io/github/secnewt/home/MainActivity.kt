@@ -50,6 +50,7 @@ import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.DeviceStatus
+import io.github.secnewt.home.apps.HomeSwitch
 import io.github.secnewt.home.apps.DeviceWatcher
 import io.github.secnewt.home.apps.Folder
 import io.github.secnewt.home.apps.HomeStore
@@ -112,6 +113,9 @@ class MainActivity : ComponentActivity() {
 
     /** The Folders and All apps buttons; `buttons off` hides them for people who swipe. */
     private var showButtons by mutableStateOf(true)
+
+    /** Sky colors, the newt and big tiles: `sky off`, `pet off`, `tiles big`, or the switches in `help`. */
+    private var switches by mutableStateOf<Map<HomeSwitch, Boolean>>(emptyMap())
 
     // "2 missed" under Phone, from Newt Phone (only the number, only for Newt-signed apps).
     private var missed by mutableStateOf<Int?>(null)
@@ -198,6 +202,7 @@ class MainActivity : ComponentActivity() {
         websites = store.websites()
         look = HomeLook.named(store.look())
         showButtons = store.showButtons()
+        switches = HomeSwitch.entries.associateWith { store.switch(it) }
         missedCalls = MissedCalls(this)
         unreadMessages = UnreadMessages(this)
         weather = Weather(this)
@@ -239,6 +244,7 @@ class MainActivity : ComponentActivity() {
                         bootKey = bootKey,
                         animateBoot = animateBoot,
                         showButtons = showButtons,
+                        switches = switches,
                         status = status.copy(flashlight = torchOn),
                         onOpen = ::open,
                         onFavoritesChange = {
@@ -480,6 +486,11 @@ class MainActivity : ComponentActivity() {
             is Command.Buttons -> {
                 showButtons = command.show ?: !showButtons
                 store.setShowButtons(showButtons)
+            }
+            is Command.Switch -> {
+                val on = command.on ?: !(switches[command.what] ?: store.switch(command.what))
+                switches = switches + (command.what to on)
+                store.setSwitch(command.what, on)
             }
             // Shown by the home screen itself.
             Command.Help, Command.Sys -> Unit

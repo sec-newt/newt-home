@@ -76,6 +76,13 @@ class HomeStore(context: Context) {
         prefs.edit().putBoolean(SHOW_BUTTONS, show).apply()
     }
 
+    /** A home screen switch ([HomeSwitch]); sky colors and the newt start on, big tiles off. */
+    fun switch(what: HomeSwitch): Boolean = prefs.getBoolean(SWITCH + what.name, what != HomeSwitch.BIG_TILES)
+
+    fun setSwitch(what: HomeSwitch, on: Boolean) {
+        prefs.edit().putBoolean(SWITCH + what.name, on).apply()
+    }
+
     fun uses(): Map<String, Int> =
         prefs.all.mapNotNull { (k, v) ->
             if (k.startsWith(USES) && v is Int) k.removePrefix(USES) to v else null
@@ -96,5 +103,6 @@ class HomeStore(context: Context) {
         const val LOOK = "look"
         const val SHOW_BUTTONS = "show_buttons"
         const val USES = "uses:"
+        const val SWITCH = "switch:"
     }
 }

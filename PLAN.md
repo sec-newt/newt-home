@@ -176,6 +176,8 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Mic button at the prompt, using the phone's voice input app (FUTO Voice Input)
   - [x] `ask` (hands a question to the Claude app) and `sys` (system card, also on tapping the status line)
   - [x] Room for results while typing, the prompt on folders too, and `buttons off`
+  - [x] Sky colors (time of day and weather), the newt by the clock, small favorite tiles; each a switch (`sky`, `pet`, `tiles`)
+- [ ] Next ideas: `alias` and ▶ command tiles in favorites, `fg` / back to the last app, a verse when you unlock, bedside mode while charging
 
 ## GrapheneOS notes
 
