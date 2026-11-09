@@ -111,4 +111,34 @@ class CalculatorTest {
         assertTrue(problem is Calculator.Result.Problem)
         assertEquals("can't turn weight into length", (problem as Calculator.Result.Problem).hint)
     }
+
+    @Test
+    fun `review fixes`() {
+        // An unknown finished unit says so instead of converting to something else.
+        assertTrue(Calculator.answer("5 km to furlongs") is Calculator.Result.Problem)
+        // Tiny and huge answers never show as 0 or a wall of digits.
+        assertEquals("1.102 × 10^-9 tons", shown("1 mg to ton"))
+        assertEquals("1.102E-9", copied("1 mg to ton"))
+        assertEquals("1 × 10^300", shown("10^300"))
+        assertEquals("0.03333333333", shown("1/30"))
+        // Phone numbers and dates aren't sums.
+        assertNull(Calculator.answer("555-1234"))
+        assertNull(Calculator.answer("555-123-4567"))
+        assertNull(Calculator.answer("(555) 123-4567"))
+        assertNull(Calculator.answer("2026-11-08"))
+        assertNull(Calculator.answer("11/8/2026"))
+        assertEquals("5", shown("10-5"))
+        // A one-letter unit stuck to a number, or "1st", is more likely an app or a word.
+        assertNull(Calculator.answer("5g"))
+        assertNull(Calculator.answer("1m"))
+        assertNull(Calculator.answer("4h"))
+        assertNull(Calculator.answer("1st"))
+        assertEquals("0.1764 ounces", shown("5 g"))
+        assertEquals("0.1764 ounces", shown("5g to oz"))
+        // m is minutes when the other unit is time, like the timer's 1h 30m.
+        assertEquals("120 minutes", shown("2 h to m"))
+        assertEquals("295.3 feet", shown("90 m"))
+        // Two numbers with only a space between them aren't joined into one.
+        assertNull(Calculator.answer("2 3 + 1"))
+    }
 }

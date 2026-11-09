@@ -99,7 +99,7 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
     `1 cup` shows milliliters.
   - Cooking amounts also give the fraction: `80 ml to cups` says "about 1/3".
   - It doesn't turn cups into grams; that depends on what's in the cup.
-  - A plain number, or an app like 1Password, gets no answer. `math off` stops the answers.
+  - A plain number, or an app like 1Password, gets no answer. `answers off` stops the answers.
 - **Speak instead of typing.** The microphone at the right of the empty prompt opens your
   phone's voice input app (FUTO Voice Input works, offline) and puts what you said at the
   prompt, as if typed: an app name opens like typing it, and a command shows what it will

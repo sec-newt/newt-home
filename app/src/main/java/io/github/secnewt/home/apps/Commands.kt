@@ -52,7 +52,7 @@ enum class HomeSwitch(val word: String, val title: String, val hint: String, val
     SKY("sky", "Sky colors", "Outlines follow the time of day and the weather", "on", "off"),
     NEWT("pet", "Newt by the clock", "Clean look: shows how the phone and the day are going", "on", "off"),
     BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small"),
-    MATH("math", "Math answers", "Answers math and conversions as you type, like 5 km to mi", "on", "off"),
+    MATH("answers", "Math answers", "Answers math and conversions as you type, like 5 km to mi", "on", "off"),
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -97,12 +97,12 @@ object Commands {
         CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back", HelpTopic.APPS),
         CommandHelp("sky off", "Plain blue and purple outlines. sky on lets them follow the time and the weather", HelpTopic.APPS),
         CommandHelp("pet off", "Hides the newt by the clock. pet on brings it back", HelpTopic.APPS),
-        CommandHelp("math off", "Stops showing math and conversion answers. math on brings them back", HelpTopic.MATH),
+        CommandHelp("answers off", "Stops showing math and conversion answers. answers on brings them back", HelpTopic.MATH),
         CommandHelp("tiles big", "Taller favorites, icon above the name. tiles small fits more on the screen", HelpTopic.APPS),
         CommandHelp("help", "This list", HelpTopic.APPS),
     )
 
-    /** [calculator] false (`math off`) leaves math and conversions alone. */
+    /** [calculator] false (`answers off`) leaves math and conversions alone. */
     fun parse(typed: String, calculator: Boolean = true): CommandMatch? {
         val text = typed.trim().replace(Regex("""\s+"""), " ")
         val word = text.substringBefore(' ').lowercase()

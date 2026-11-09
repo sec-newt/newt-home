@@ -2,8 +2,6 @@ package io.github.secnewt.home.apps
 
 import java.math.BigDecimal
 import java.math.MathContext
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
@@ -37,6 +35,7 @@ object Calculator {
 
     private fun math(text: String): Result? {
         val expr = text.removePrefix("=").trim()
+        if (PHONE_OR_DATE.any { it.matches(expr) }) return null
         val parsed = Parser(expr).parseAll() ?: return null
         if (!parsed.hasOperator) return null
         val value = parsed.value
@@ -46,14 +45,29 @@ object Calculator {
 
     /** Lowercase, single spaces, `×`/`÷`/`x` as `*` and `/`, and `1,234` as `1234`. */
     private fun clean(typed: String): String = typed.trim().lowercase(Locale.ROOT)
-        .replace(Regex("""\s+"""), " ")
         .replace('×', '*').replace('÷', '/').replace('−', '-')
-        .replace(Regex("""(?<=\d)\s*x\s*(?=[\d(])"""), "*")
-        .replace(Regex("""(?<=\d),(?=\d{3}(\D|$))"""), "")
+        .replace(TIMES_X, "*")
+        .replace(THOUSANDS, "")
         .replace("°", " ")
-        .replace(Regex("""\bdegrees?\b"""), " ")
-        .replace(Regex("""\s+"""), " ")
+        .replace(DEGREES, " ")
+        .replace(SPACES, " ")
         .trim()
+
+    private val SPACES = Regex("""\s+""")
+    private val TIMES_X = Regex("""(?<=\d)\s*x\s*(?=[\d(])""")
+    private val THOUSANDS = Regex("""(?<=\d),(?=\d{3}(\D|$))""")
+    private val DEGREES = Regex("""\bdegrees?\b""")
+    private val MIXED = Regex("""(\d+) (\d+)/(\d+)""")
+    private val OF = Regex("""\s*\bof\b\s*""")
+    private val DIGITS_APART = Regex("""[\d.] +[\d.]""")
+    private val STILL_TYPING = Regex("""^(.*) (to|into|in|as)$""")
+
+    /** 555-1234, (555) 123-4567, 2026-11-08, 11/8/2026: not sums, even though they look like them. */
+    private val PHONE_OR_DATE = listOf(
+        Regex("""\d{3}-\d{4}"""),
+        Regex("""\(?\d{3}\)?[-. ]?\d{3}[-.]\d{4}"""),
+        Regex("""\d{1,4}[-/]\d{1,2}[-/]\d{1,4}"""),
+    )
 
     private class Parsed(val value: Double, val hasOperator: Boolean)
 
@@ -62,10 +76,11 @@ object Calculator {
      * 80, like a pocket calculator. `1 1/2` is one and a half.
      */
     private class Parser(input: String) {
+        // Spaces between two numbers ("2 3") would join them into one, so they're refused.
         private val s = input
-            .replace(Regex("""(\d+) (\d+)/(\d+)"""), "($1+$2/$3)")
-            .replace(Regex("""\s*\bof\b\s*"""), "*")
-            .replace(" ", "")
+            .replace(MIXED, "($1+$2/$3)")
+            .replace(OF, "*")
+            .let { if (DIGITS_APART.containsMatchIn(it)) "?" else it.replace(" ", "") }
         private var at = 0
         private var operator = false
 
@@ -211,7 +226,7 @@ object Calculator {
         Unit(Kind.SPEED, 1852.0 / 3600, "knot", "knots", listOf("knot", "knots", "kn", "kt", "kts"), "mile per hour"),
         // Time, in seconds.
         Unit(Kind.TIME, 1.0, "second", "seconds", listOf("s", "sec", "secs", "second", "seconds"), "minute"),
-        Unit(Kind.TIME, 60.0, "minute", "minutes", listOf("min", "mins", "minute", "minutes"), "hour"),
+        Unit(Kind.TIME, 60.0, "minute", "minutes", listOf("min", "mins", "minute", "minutes", "m"), "hour"),
         Unit(Kind.TIME, 3600.0, "hour", "hours", listOf("h", "hr", "hrs", "hour", "hours"), "minute"),
         Unit(Kind.TIME, 86400.0, "day", "days", listOf("day", "days"), "hour"),
         Unit(Kind.TIME, 604800.0, "week", "weeks", listOf("wk", "wks", "week", "weeks"), "day"),
@@ -248,29 +263,43 @@ object Calculator {
 
     /** "5 km to mi", "5 km in miles", "gallon to cups", or just "350 f". */
     private fun conversion(text: String): Result? {
-        for (splitter in listOf(" to ", " into ", " in ", " as ", " = ")) {
+        for (splitter in SPLITTERS) {
             var from = text.indexOf(splitter)
             while (from >= 0) {
-                val target = unitsFor(text.substring(from + splitter.length).trim())
-                if (target.isNotEmpty()) {
-                    amount(text.substring(0, from), allowNoNumber = true)?.let { (qty, units) -> return convert(qty, units, target) }
+                val right = text.substring(from + splitter.length).trim()
+                val target = unitsFor(right)
+                val left = amount(text.substring(0, from), allowNoNumber = true, glued = true)
+                if (left != null) {
+                    if (target.isNotEmpty()) return convert(left.first, left.second, target)
+                    // A finished word that isn't a unit we know: say so rather than quietly
+                    // converting to something else.
+                    if (' ' !in right) return Result.Problem("which unit is \"$right\"? like miles, cups or °F")
                 }
                 from = text.indexOf(splitter, from + 1)
             }
         }
-        // Still typing the unit after "to": convert the usual way until it's finished.
-        val trailing = Regex("""^(.*) (to|into|in|as)( \S*)?$""").find(text)?.groupValues?.get(1)
-        if (trailing != null) amount(trailing, allowNoNumber = false)?.let { (qty, units) -> return convert(qty, units, null) }
-        return amount(text, allowNoNumber = false)?.let { (qty, units) -> convert(qty, units, null) }
+        // "5 km to": the usual conversion until the unit is typed.
+        STILL_TYPING.find(text)?.groupValues?.get(1)?.let { before ->
+            amount(before, allowNoNumber = false, glued = true)?.let { (qty, units) -> return convert(qty, units, null) }
+        }
+        return amount(text, allowNoNumber = false, glued = false)?.let { (qty, units) -> convert(qty, units, null) }
     }
 
+    private val SPLITTERS = listOf(" to ", " into ", " in ", " as ", " = ")
+
     /** "5 km" → 5 and kilometers. The number may be math ("1/2 cup") or, with a target, left out ("cup to ml"). */
-    private fun amount(text: String, allowNoNumber: Boolean): Pair<Double, List<Unit>>? {
+    /**
+     * [glued] false (no "to" after it) refuses a one-letter unit stuck to the number, and
+     * "st": "5g", "1m", "4h" and "1st" are more likely app names or words than conversions.
+     * "5 g", "1kg" and "5g to oz" still work.
+     */
+    private fun amount(text: String, allowNoNumber: Boolean, glued: Boolean): Pair<Double, List<Unit>>? {
         val t = text.trim()
         for ((word, units) in WORDS) {
             if (!t.endsWith(word)) continue
             val before = t.dropLast(word.length)
             if (before.isNotEmpty() && !before.last().let { it.isDigit() || it == ' ' || it == ')' || it == '.' }) continue
+            if (!glued && before.lastOrNull()?.isDigit() == true && (word.length < 2 || word == "st")) continue
             val numberPart = before.trim().removeSuffix("a").trim()
             if (numberPart.isEmpty()) return if (allowNoNumber) 1.0 to units else null
             val parsed = Parser(numberPart).parseAll() ?: continue
@@ -324,13 +353,27 @@ object Calculator {
     private const val MATH_DIGITS = 10
     private const val UNIT_DIGITS = 4
 
-    /** [digits] significant digits, no trailing zeros; "1,234.5" when [grouped]. */
+    /**
+     * [digits] significant digits, no trailing zeros; "1,234.5" when [grouped]. Very big or
+     * very small numbers are shown as "1.102 × 10^-9" (copied as "1.102E-9") so they fit
+     * and never round to a misleading 0.
+     */
     private fun number(value: Double, digits: Int, grouped: Boolean): String {
         if (value == 0.0) return "0"
         val rounded = BigDecimal(value).round(MathContext(digits)).stripTrailingZeros()
-        if (rounded.signum() == 0) return "0"
-        if (!grouped) return rounded.toPlainString()
-        val format = DecimalFormat("#,##0.##########", DecimalFormatSymbols(Locale.US))
-        return format.format(rounded)
+        val size = abs(value)
+        if (size >= 1e15 || size < 1e-6) {
+            val mantissa = rounded.movePointLeft(rounded.precision() - rounded.scale() - 1).stripTrailingZeros().toPlainString()
+            val exponent = rounded.precision() - rounded.scale() - 1
+            return if (grouped) "$mantissa × 10^$exponent" else "${mantissa}E$exponent"
+        }
+        val plain = rounded.toPlainString()
+        if (!grouped) return plain
+        val negative = plain.startsWith("-")
+        val digitsOnly = plain.removePrefix("-")
+        val whole = digitsOnly.substringBefore('.')
+        val part = digitsOnly.substringAfter('.', "")
+        val withCommas = whole.reversed().chunked(3).joinToString(",").reversed()
+        return (if (negative) "-" else "") + withCommas + if (part.isEmpty()) "" else ".$part"
     }
 }

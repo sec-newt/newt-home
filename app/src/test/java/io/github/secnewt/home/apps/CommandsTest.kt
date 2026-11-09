@@ -157,10 +157,10 @@ class CommandsTest {
     }
 
     @Test
-    fun `math off leaves numbers alone`() {
+    fun `answers off leaves numbers alone`() {
         assertNull(Commands.parse("2+2", calculator = false))
         assertNull(Commands.parse("5 km to mi", calculator = false))
-        assertEquals(Command.Switch(HomeSwitch.MATH, false), ready("math off"))
-        assertEquals(Command.Switch(HomeSwitch.MATH, true), ready("math on"))
+        assertEquals(Command.Switch(HomeSwitch.MATH, false), ready("answers off"))
+        assertEquals(Command.Switch(HomeSwitch.MATH, true), ready("answers on"))
     }
 }
