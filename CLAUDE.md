@@ -43,7 +43,8 @@ Paste the result. Don't say "tests pass" without the output.
 2. **Review it.** Run `/code-review` on the branch with [REVIEW.md](REVIEW.md) as the rules,
    plus `/security-review`. Fix what they find, or say why not. Check every item under
    "What was asked" against what the code really does.
-3. Open the PR with the template filled in, then **post the review as a PR comment**:
+3. Open the PR with every section of the template filled in (What was asked, What
+   changes, Testing, Risk, How to revert), then **post the review as a PR comment**:
    start with the count ("Nothing to fix." or "1 important, fixed in abc123."), then each
    finding with its file and line, its tag, and what was done about it. The owner reads
    the review there.
