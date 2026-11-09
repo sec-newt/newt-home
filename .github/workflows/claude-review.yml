@@ -7,6 +7,12 @@ name: Claude review
 #
 # Needs the CLAUDE_CODE_OAUTH_TOKEN secret (from `claude setup-token`), which runs on the
 # Claude subscription rather than a paid API key.
+#
+# OFF for now: subscription tokens are rejected inside GitHub Actions with a 401
+# (anthropics/claude-code-action#1613, #1614). Until that's fixed, Claude runs the same
+# review on the owner's computer before each PR and posts it as a comment (see CLAUDE.md).
+# To turn this back on, no code change needed:
+#   gh variable set CLAUDE_REVIEW_ENABLED --body true -R sec-newt/newt-home
 
 on:
   pull_request:
@@ -22,9 +28,10 @@ concurrency:
 jobs:
   review:
     name: Review
-    # Only the owner's own branches: never forks (no secrets, untrusted text), never
-    # Dependabot (its runs don't get this secret), never drafts.
+    # Only when switched on, and only the owner's own branches: never forks (no secrets,
+    # untrusted text), never Dependabot (its runs don't get this secret), never drafts.
     if: >-
+      vars.CLAUDE_REVIEW_ENABLED == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]' &&
       !github.event.pull_request.draft

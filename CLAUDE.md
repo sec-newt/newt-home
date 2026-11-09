@@ -40,7 +40,15 @@ Paste the result. Don't say "tests pass" without the output.
 ## Before opening a PR
 
 1. Run the checks above.
-2. Run `/code-review` and `/security-review` and fix what they find, or say why not.
-3. Fill in the PR template (Testing, Risk, How to revert).
+2. **Review it.** Run `/code-review` on the branch with [REVIEW.md](REVIEW.md) as the rules,
+   plus `/security-review`. Fix what they find, or say why not. Check every item under
+   "What was asked" against what the code really does.
+3. Open the PR with the template filled in, then **post the review as a PR comment**:
+   start with the count ("Nothing to fix." or "1 important, fixed in abc123."), then each
+   finding with its file and line, its tag, and what was done about it. The owner reads
+   the review there.
+
+The automatic GitHub review (`.github/workflows/claude-review.yml`) is switched off until a
+login bug in Claude's GitHub Action is fixed; this local review takes its place.
 
 Merge only after the owner says "merge it". Merges to `main` publish a signed release.
