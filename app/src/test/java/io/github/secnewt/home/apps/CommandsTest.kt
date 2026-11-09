@@ -113,6 +113,10 @@ class CommandsTest {
         assertNull(Commands.parse("signal"))
         assertNull(Commands.parse("tim"))
         assertNull(Commands.parse("files by google"))
+        // Games named with numbers still open by themselves: a plain number is never an answer.
+        assertNull(Commands.parse("2048"))
+        assertNull(Commands.parse("42"))
+        assertNull(Commands.parse("20"))
         assertNull(Commands.parse(""))
     }
 
