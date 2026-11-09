@@ -53,6 +53,21 @@ class AppSearchTest {
     }
 
     @Test
+    fun `a number opens a game only when it is the game's whole first word`() {
+        val games = listOf("2048", "42", "Signal", "1Password", "7 Days")
+        fun only(q: String) = AppSearch.onlyMatch(AppSearch.search(games, q, name = { it }), q, name = { it })
+        assertEquals("2048", only("2048"))
+        assertEquals("42", only("42"))
+        assertEquals("7 Days", only("7 days"))
+        // Part of a number might be the start of a sum ("20 x 3"), so it waits for Enter.
+        assertNull(only("20"))
+        assertNull(only("204"))
+        assertNull(only("1"))
+        // Letters still open by themselves as before.
+        assertEquals("1Password", only("1pa"))
+    }
+
+    @Test
     fun `finds apps by the name of their folder`() {
         val folders = mapOf("Magnifier" to "Blind tools", "Sudoku" to "Games")
         fun find(q: String) = AppSearch.search(apps, q, name = { it }, folder = { folders[it] })

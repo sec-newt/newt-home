@@ -37,6 +37,9 @@ sealed interface Command {
 
     /** A home screen setting ([HomeSwitch]) [on], off, or null to switch it the other way. */
     data class Switch(val what: HomeSwitch, val on: Boolean?) : Command
+
+    /** The calculator's answer ([Calculator]): [shown] at the prompt, [copy] copied on Enter or a tap. */
+    data class Answer(val shown: String, val copy: String) : Command
 }
 
 /**
@@ -49,6 +52,7 @@ enum class HomeSwitch(val word: String, val title: String, val hint: String, val
     SKY("sky", "Sky colors", "Outlines follow the time of day and the weather", "on", "off"),
     NEWT("pet", "Newt by the clock", "Clean look: shows how the phone and the day are going", "on", "off"),
     BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small"),
+    MATH("answers", "Math answers", "Answers math and conversions as you type, like 5 km to mi", "on", "off"),
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -64,7 +68,7 @@ sealed interface CommandMatch {
 }
 
 /** The groups in `help`, in the order they're shown. */
-enum class HelpTopic(val title: String) { TIME("Time"), PEOPLE("People"), PHONE("Phone"), APPS("Apps & look") }
+enum class HelpTopic(val title: String) { TIME("Time"), PEOPLE("People"), PHONE("Phone"), MATH("Math & units"), APPS("Apps & look") }
 
 /** One line of `help`: what to type, what it does, and which group it's in. */
 data class CommandHelp(val example: String, val does: String, val topic: HelpTopic)
@@ -78,6 +82,10 @@ object Commands {
     val HELP = listOf(
         CommandHelp("timer 10", "A 10 minute timer. Also timer 90s, timer 1h 30m", HelpTopic.TIME),
         CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845", HelpTopic.TIME),
+        CommandHelp("15% of 80", "Math: + − × ÷, ^, percent and parentheses. The answer shows as you type; Enter copies it", HelpTopic.MATH),
+        CommandHelp("5 km to mi", "Converts length, weight, cooking, temperature, speed, time, data and area", HelpTopic.MATH),
+        CommandHelp("= 20 x 3", "Starting with = never opens an app by itself, handy when a sum starts like a game's name", HelpTopic.MATH),
+        CommandHelp("350 f", "A number and a unit converts the usual way: °F to °C, cups to milliliters, km to miles", HelpTopic.MATH),
         CommandHelp("flashlight", "Turns the flashlight on or off. Also torch", HelpTopic.PHONE),
         CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call", HelpTopic.PEOPLE),
         CommandHelp("wifi", "Wi-Fi on or off and networks", HelpTopic.PHONE),
@@ -90,11 +98,13 @@ object Commands {
         CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back", HelpTopic.APPS),
         CommandHelp("sky off", "Plain blue and purple outlines. sky on lets them follow the time and the weather", HelpTopic.APPS),
         CommandHelp("pet off", "Hides the newt by the clock. pet on brings it back", HelpTopic.APPS),
+        CommandHelp("answers off", "Stops showing math and conversion answers. answers on brings them back", HelpTopic.MATH),
         CommandHelp("tiles big", "Taller favorites, icon above the name. tiles small fits more on the screen", HelpTopic.APPS),
         CommandHelp("help", "This list", HelpTopic.APPS),
     )
 
-    fun parse(typed: String): CommandMatch? {
+    /** [calculator] false (`answers off`) leaves math and conversions alone. */
+    fun parse(typed: String, calculator: Boolean = true): CommandMatch? {
         val text = typed.trim().replace(Regex("""\s+"""), " ")
         val word = text.substringBefore(' ').lowercase()
         val rest = text.substringAfter(' ', "").trim()
@@ -143,8 +153,15 @@ object Commands {
                     sw.offWord, "off", "hide" -> CommandMatch.Ready(Command.Switch(sw, false))
                     else -> CommandMatch.Incomplete(word, "${sw.word} ${sw.onWord} or ${sw.word} ${sw.offWord}")
                 }
-            }
+            } ?: if (calculator) calculate(text) else null
         }
+    }
+
+    /** Not a command word: maybe math or a conversion. */
+    private fun calculate(text: String): CommandMatch? = when (val r = Calculator.answer(text)) {
+        is Calculator.Result.Answer -> CommandMatch.Ready(Command.Answer(r.shown, r.copy))
+        is Calculator.Result.Problem -> CommandMatch.Incomplete("", r.hint)
+        null -> null
     }
 
     private val WORDS = listOf("timer", "alarm", "flashlight", "torch", "call", "wifi", "wi-fi", "bluetooth", "files", "help", "ask", "sys", "neofetch", "fastfetch", "look", "theme", "buttons") +
@@ -258,6 +275,12 @@ object Commands {
                 false -> "use small favorite tiles, so more fit"
                 null -> "switch between big and small favorite tiles"
             }
+            HomeSwitch.MATH -> when (command.on) {
+                true -> "answer math and conversions as you type"
+                false -> "stop answering math and conversions"
+                null -> "switch math answers on or off"
+            }
         }
+        is Command.Answer -> "= ${command.shown}"
     }
 }

@@ -42,7 +42,7 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 - **Small tiles (clean look).** Favorites show the icon beside the name, so eight fit with
   room to spare; the date and weather share a line. `tiles big` brings back the tall tiles.
 - **Every one of these is a switch.** At the end of `help`, under **Screen**: Sky colors,
-  Newt by the clock and Big tiles, next to Clean look and Screen buttons.
+  Newt by the clock, Big tiles and Math answers, next to Clean look and Screen buttons.
 - **Swipe down to close.** Every card that slides up (the calendar, commands, app
   menus and the rest) closes with a swipe down, as well as with back or tapping outside.
   It follows your finger, so a short drag springs back.
@@ -90,6 +90,19 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   - `sys` (or `neofetch`) shows this phone's system info: Android version and build,
     model, uptime, app count, storage, memory and battery. Tapping the status line at
     the top does the same.
+- **Math and conversions.** Type a sum or a conversion at the prompt and the answer shows
+  as you type, worked out on the phone. **Enter** (or a tap) copies the number.
+  - Math: `2 + 3 * 4`, `15% of 80`, `80 + 15%` (adds 15%), `(2 + 3) x 4`, `2^10`.
+  - Conversions: `5 km to mi`, `1 cup to ml`, `350 f to c`, `1 GB to GiB`, `gallon to cups`.
+    Length, weight, cooking (teaspoons to gallons), temperature, speed, time, data and area.
+  - Just a number and a unit converts the usual way: `350 f` shows °C, `5 km` shows miles,
+    `1 cup` shows milliliters.
+  - Cooking amounts also give the fraction: `80 ml to cups` says "about 1/3".
+  - It doesn't turn cups into grams; that depends on what's in the cup.
+  - A plain number, or an app like 1Password, gets no answer. `answers off` stops the answers.
+  - A game named with a number, like 2048 or 42, still opens by itself when you type its
+    whole name. Part of a number (`20`) waits for Enter, so a sum like `20 x 3` doesn't open
+    2048 if you pause. Start with `=` (`= 42 + 8`) and nothing opens by itself.
 - **Speak instead of typing.** The microphone at the right of the empty prompt opens your
   phone's voice input app (FUTO Voice Input works, offline) and puts what you said at the
   prompt, as if typed: an app name opens like typing it, and a command shows what it will
@@ -160,7 +173,7 @@ Every pull request and every push to `main` runs these on GitHub:
 
 | Check | What it catches |
 | --- | --- |
-| Logic tests | Mistakes in search, opening the only match, and favorites |
+| Logic tests | Mistakes in search, opening the only match, favorites, and the calculator's math and conversions |
 | Screenshots | The home screen in light, dark and at 200% text (download the `screenshots` artifact to look) |
 | Accessibility | Low contrast, small touch targets, missing screen-reader labels |
 | Lint | Common Android bugs and security problems |

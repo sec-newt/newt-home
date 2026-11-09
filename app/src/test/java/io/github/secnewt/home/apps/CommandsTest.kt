@@ -113,6 +113,10 @@ class CommandsTest {
         assertNull(Commands.parse("signal"))
         assertNull(Commands.parse("tim"))
         assertNull(Commands.parse("files by google"))
+        // Games named with numbers still open by themselves: a plain number is never an answer.
+        assertNull(Commands.parse("2048"))
+        assertNull(Commands.parse("42"))
+        assertNull(Commands.parse("20"))
         assertNull(Commands.parse(""))
     }
 
@@ -144,5 +148,23 @@ class CommandsTest {
         assertTrue(Commands.parse("sky blue") is CommandMatch.Incomplete)
         // Every Newt app starts with "newt", so it's never a command.
         assertEquals(null, Commands.parse("newt"))
+    }
+
+    @Test
+    fun `math and conversions are answers that copy`() {
+        assertEquals(Command.Answer("3.107 miles", "3.107"), ready("5 km to mi"))
+        assertEquals(Command.Answer("12", "12"), ready("15% of 80"))
+        assertEquals("= 12", Commands.describe(Command.Answer("12", "12")) { _, _ -> "" })
+        assertTrue(Commands.parse("5 kg to miles") is CommandMatch.Incomplete)
+        // Command words still win: call 555-0100 dials, it isn't subtraction.
+        assertEquals(Command.Call("555-0100"), ready("call 555-0100"))
+    }
+
+    @Test
+    fun `answers off leaves numbers alone`() {
+        assertNull(Commands.parse("2+2", calculator = false))
+        assertNull(Commands.parse("5 km to mi", calculator = false))
+        assertEquals(Command.Switch(HomeSwitch.MATH, false), ready("answers off"))
+        assertEquals(Command.Switch(HomeSwitch.MATH, true), ready("answers on"))
     }
 }
