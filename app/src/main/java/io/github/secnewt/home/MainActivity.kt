@@ -1,6 +1,8 @@
 package io.github.secnewt.home
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentUris
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -492,6 +494,9 @@ class MainActivity : ComponentActivity() {
                 switches = switches + (command.what to on)
                 store.setSwitch(command.what, on)
             }
+            // Android 13+ shows its own "Copied" note, and can show what was copied.
+            is Command.Answer -> getSystemService(ClipboardManager::class.java)
+                .setPrimaryClip(ClipData.newPlainText("Newt Home answer", command.copy))
             // Shown by the home screen itself.
             Command.Help, Command.Sys -> Unit
         }

@@ -145,4 +145,22 @@ class CommandsTest {
         // Every Newt app starts with "newt", so it's never a command.
         assertEquals(null, Commands.parse("newt"))
     }
+
+    @Test
+    fun `math and conversions are answers that copy`() {
+        assertEquals(Command.Answer("3.107 miles", "3.107"), ready("5 km to mi"))
+        assertEquals(Command.Answer("12", "12"), ready("15% of 80"))
+        assertEquals("= 12", Commands.describe(Command.Answer("12", "12")) { _, _ -> "" })
+        assertTrue(Commands.parse("5 kg to miles") is CommandMatch.Incomplete)
+        // Command words still win: call 555-0100 dials, it isn't subtraction.
+        assertEquals(Command.Call("555-0100"), ready("call 555-0100"))
+    }
+
+    @Test
+    fun `math off leaves numbers alone`() {
+        assertNull(Commands.parse("2+2", calculator = false))
+        assertNull(Commands.parse("5 km to mi", calculator = false))
+        assertEquals(Command.Switch(HomeSwitch.MATH, false), ready("math off"))
+        assertEquals(Command.Switch(HomeSwitch.MATH, true), ready("math on"))
+    }
 }

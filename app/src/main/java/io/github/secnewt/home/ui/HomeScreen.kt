@@ -156,10 +156,10 @@ sealed interface HomeView {
 
 /**
  * A command at the top of the results. [ready] commands run on Enter or a tap; otherwise
- * [text] says what's still needed.
+ * [text] says what's still needed. A calculator answer [copies] instead of running.
  */
 @Immutable
-data class CommandView(val text: String, val ready: Boolean)
+data class CommandView(val text: String, val ready: Boolean, val copies: Boolean = false)
 
 /** The All apps list, for tests. */
 internal const val ALL_APPS_LIST = "all-apps"
@@ -1649,7 +1649,7 @@ private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
                     Modifier.clickable(
                         interactionSource = interactions,
                         indication = LocalIndication.current,
-                        onClickLabel = "Run",
+                        onClickLabel = if (command.copies) "Copy" else "Run",
                         onClick = onRun,
                     )
                 } else {
@@ -1679,7 +1679,11 @@ private fun CommandRow(typed: String, command: CommandView, onRun: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                if (command.ready) "${command.text} · Enter runs it" else "# ${command.text}",
+                when {
+                    !command.ready -> "# ${command.text}"
+                    command.copies -> "${command.text} · Enter copies it"
+                    else -> "${command.text} · Enter runs it"
+                },
                 fontFamily = NewtFonts.Mono,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -1707,7 +1711,7 @@ private fun CleanCommandRow(typed: String, command: CommandView, onRun: () -> Un
                 if (command.ready) {
                     Modifier
                         .background(Brush.linearGradient(listOf(colors.primary, colors.secondary)))
-                        .clickable(onClickLabel = "Run", onClick = onRun)
+                        .clickable(onClickLabel = if (command.copies) "Copy" else "Run", onClick = onRun)
                 } else {
                     Modifier
                         .background(colors.surfaceContainerLow)
@@ -1726,7 +1730,11 @@ private fun CleanCommandRow(typed: String, command: CommandView, onRun: () -> Un
             color = text,
         )
         Text(
-            if (command.ready) "Tap, or press Enter" else command.text.replaceFirstChar { it.uppercase() },
+            when {
+                !command.ready -> command.text.replaceFirstChar { it.uppercase() }
+                command.copies -> "Tap, or press Enter, to copy"
+                else -> "Tap, or press Enter"
+            },
             fontFamily = NewtFonts.Body,
             fontSize = 17.sp,
             color = if (command.ready) text else colors.onSurfaceVariant,

@@ -170,7 +170,7 @@ fun HomeRoute(
             words = { searchWords[it.key].orEmpty() },
         )
     }
-    val command = if (isList) null else Commands.parse(query)
+    val command = if (isList) null else Commands.parse(query, calculator = isOn(HomeSwitch.MATH))
     // A command word, or the start of one, never opens an app by itself (typing "hel" on the
     // way to "help" mustn't launch an app named Hello); commands only run on Enter or a tap.
     val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
@@ -251,7 +251,11 @@ fun HomeRoute(
             query,
             results,
             when (command) {
-                is CommandMatch.Ready -> CommandView(Commands.describe(command.command, clockTime), ready = true)
+                is CommandMatch.Ready -> CommandView(
+                    Commands.describe(command.command, clockTime),
+                    ready = true,
+                    copies = command.command is Command.Answer,
+                )
                 is CommandMatch.Incomplete -> CommandView(command.hint, ready = false)
                 null -> null
             },

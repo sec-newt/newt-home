@@ -867,6 +867,7 @@ private fun topicIcon(topic: HelpTopic): ImageVector = when (topic) {
     HelpTopic.TIME -> Icons.Filled.DateRange
     HelpTopic.PEOPLE -> Icons.Filled.Person
     HelpTopic.PHONE -> Icons.Filled.Settings
+    HelpTopic.MATH -> Icons.Filled.Add
     HelpTopic.APPS -> FolderShape
 }
 

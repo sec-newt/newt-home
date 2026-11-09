@@ -574,6 +574,36 @@ class HomeScreenTest {
         Home(view = commandResults("timer", "how long? like timer 10, timer 90s or timer 1h 30m", ready = false), query = "timer")
     }
 
+    private fun answerResults(query: String, shown: String) =
+        HomeView.Results(query, results(query).results, CommandView("= $shown", ready = true, copies = true))
+
+    @Test
+    fun calculatorAnswer() = render("calculator_answer_dark", dark = true) {
+        Home(view = answerResults("5 km to mi", "3.107 miles"), query = "5 km to mi")
+    }
+
+    @Test
+    fun calculatorAnswerClean() = render("calculator_answer_clean_light", dark = false) {
+        Clean { Home(view = answerResults("350 f", "176.7 °C"), query = "350 f") }
+    }
+
+    @Test
+    fun calculatorAnswerLargeText() = render("calculator_answer_200_percent", dark = false, fontScale = 2f) {
+        Home(view = answerResults("78.86 ml to cups", "0.3333 cups, about 1/3"), query = "78.86 ml to cups")
+    }
+
+    @Test
+    fun tappingAnAnswerCopiesIt() {
+        var copied = 0
+        composeRule.setContent {
+            HomeTheme(darkTheme = true) {
+                Home(view = answerResults("15% of 80", "12"), query = "15% of 80", onSubmit = { copied++ })
+            }
+        }
+        composeRule.onNodeWithText("= 12 · Enter copies it").performClick()
+        assertEquals(1, copied)
+    }
+
     @Test
     fun helpSheet() = render("help_dark", dark = true) {
         WithHoldMenu(menuOpen = true, menu = { HelpSheet(Commands.HELP, onPick = {}, onDismiss = {}) }) { Home() }
