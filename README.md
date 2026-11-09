@@ -100,6 +100,9 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   - Cooking amounts also give the fraction: `80 ml to cups` says "about 1/3".
   - It doesn't turn cups into grams; that depends on what's in the cup.
   - A plain number, or an app like 1Password, gets no answer. `answers off` stops the answers.
+  - A game named with a number, like 2048 or 42, still opens by itself when you type its
+    whole name. Part of a number (`20`) waits for Enter, so a sum like `20 x 3` doesn't open
+    2048 if you pause. Start with `=` (`= 42 + 8`) and nothing opens by itself.
 - **Speak instead of typing.** The microphone at the right of the empty prompt opens your
   phone's voice input app (FUTO Voice Input works, offline) and puts what you said at the
   prompt, as if typed: an app name opens like typing it, and a command shows what it will

@@ -177,7 +177,7 @@ fun HomeRoute(
     val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
         null
     } else {
-        AppSearch.onlyMatch(results, query)
+        AppSearch.onlyMatch(results, query, name = { it.name })
     }
 
     fun runCommand(ready: Command) {

@@ -102,9 +102,15 @@ object AppSearch {
      * the letters scattered through them ("Settings" has s…i…g), or that only match by
      * folder or by your search words, are too loose to count, either to open an app or to
      * stop one opening.
+     *
+     * A query of only digits opens an app only when the digits are its whole first word
+     * ("42" opens 42, "2048" opens 2048), so "20" on the way to "20 x 3" doesn't open 2048.
      */
-    fun <T> onlyMatch(results: List<Result<T>>, query: String): T? {
-        if (normalize(query).length < 2) return null
-        return results.filter { it.match.rank >= Match.INSIDE.rank }.singleOrNull()?.item
+    fun <T> onlyMatch(results: List<Result<T>>, query: String, name: ((T) -> String)? = null): T? {
+        val q = normalize(query)
+        if (q.length < 2) return null
+        val only = results.filter { it.match.rank >= Match.INSIDE.rank }.singleOrNull()?.item ?: return null
+        if (name != null && q.all { it.isDigit() } && normalize(name(only)).split(' ').first() != q) return null
+        return only
     }
 }

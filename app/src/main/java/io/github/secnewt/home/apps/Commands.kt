@@ -84,6 +84,7 @@ object Commands {
         CommandHelp("alarm 7:30", "An alarm at 7:30. Also alarm 6pm, alarm 1845", HelpTopic.TIME),
         CommandHelp("15% of 80", "Math: + − × ÷, ^, percent and parentheses. The answer shows as you type; Enter copies it", HelpTopic.MATH),
         CommandHelp("5 km to mi", "Converts length, weight, cooking, temperature, speed, time, data and area", HelpTopic.MATH),
+        CommandHelp("= 20 x 3", "Starting with = never opens an app by itself, handy when a sum starts like a game's name", HelpTopic.MATH),
         CommandHelp("350 f", "A number and a unit converts the usual way: °F to °C, cups to milliliters, km to miles", HelpTopic.MATH),
         CommandHelp("flashlight", "Turns the flashlight on or off. Also torch", HelpTopic.PHONE),
         CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call", HelpTopic.PEOPLE),
