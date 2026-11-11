@@ -10,7 +10,7 @@ import io.github.secnewt.home.apps.DayEvent
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import io.github.secnewt.home.apps.SkyTone
@@ -366,7 +366,9 @@ private fun HomePage(
     val perRow = if (bigText && !twoAcross) 1 else 2
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
     // The sky picture: clean dark look only, and not while typing (results get plain ground).
-    val sky = scene?.takeIf { clean && !typing && MaterialTheme.colorScheme.background.luminance() < 0.5f }
+    val skyOn = scene != null && clean && darkScheme()
+    val sky = scene?.takeIf { skyOn && !typing }
+    val motion = rememberSkyMotion(enabled = skyOn && animateScene)
     // On the picture every word sits on a solid card; without it nothing changes.
     val card = if (sky != null) {
         Modifier
@@ -376,10 +378,10 @@ private fun HomePage(
     } else {
         Modifier
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
     // The clear window of sky at the top, before the clock.
-    val window = (maxHeight * 0.22f).coerceIn(96.dp, 200.dp)
-    if (sky != null) SkyScene(sky, horizon = window + 8.dp, animate = animateScene, modifier = Modifier.fillMaxSize())
+    val window = (LocalConfiguration.current.screenHeightDp.dp * 0.2f).coerceIn(96.dp, 200.dp)
+    Box(Modifier.fillMaxSize()) {
+    if (sky != null) SkyScene(sky, horizon = window + 8.dp, motion = motion, modifier = Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -420,7 +422,7 @@ private fun HomePage(
                     if (favorites.isEmpty()) {
                         item { Box(Modifier.padding(top = 10.dp).then(card)) { Hint("# press and hold any app to add it here") } }
                     }
-                    if (clean && !bigTiles && bigText) {
+                    if (clean && !bigTiles && perRow == 2 && bigText) {
                         // Big text, two to a row: the icon above the name, so the name gets
                         // the tile's whole width (and wraps, never shrinks).
                         items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
@@ -1520,7 +1522,8 @@ private fun FavoriteTile(
             app.name,
             fontFamily = rowFont(),
             fontWeight = FontWeight.Bold,
-            fontSize = if (compact) 17.sp else 20.sp,
+            // The same size as the small tile's name, so big text never gets smaller here.
+            fontSize = if (compact) 19.sp else 20.sp,
             // A long name breaks at a hyphen, not mid-letter, when it has to wrap.
             style = LocalTextStyle.current.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph),
             color = MaterialTheme.colorScheme.onSurface,

@@ -1,6 +1,7 @@
 package io.github.secnewt.home.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -46,34 +47,40 @@ private const val SCENE_LOOP_MS = 6_000
  * not pictures, so it takes no room in the app, and only redraws while it moves.
  */
 @Composable
-fun SkyScene(tone: SkyTone, horizon: Dp, animate: Boolean, modifier: Modifier = Modifier) {
-    val phase = remember { Animatable(0f) }
+fun SkyScene(tone: SkyTone, horizon: Dp, motion: Animatable<Float, AnimationVector1D>, modifier: Modifier = Modifier) {
+    val look = remember(tone) { SceneLook.of(tone) }
+    // Remembered, so the shapes are only worked out again when the size or the sky changes,
+    // not every time the clock ticks.
+    val picture = remember(look, horizon, motion) {
+        Modifier.drawWithCache {
+            val hz = horizon.toPx().coerceAtMost(size.height)
+            val fixed = SceneShapes.make(size, hz, look, density)
+            onDrawBehind { drawScene(fixed, look, hz, motion.value, motion.isRunning) }
+        }
+    }
+    Box(modifier.clearAndSetSemantics { }.clipToBounds().then(picture))
+}
+
+/**
+ * Where the sky's motion is, 0 to 1 and round again. Kept by the home page rather than the
+ * picture, so typing (which hides the picture) doesn't start the 30 seconds over. Only runs
+ * when [enabled]: the picture shows and Android's animations are on.
+ */
+@Composable
+fun rememberSkyMotion(enabled: Boolean): Animatable<Float, AnimationVector1D> {
+    val motion = remember { Animatable(0f) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    if (animate) {
+    if (enabled) {
         LaunchedEffect(lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                // Loop for a while, then ease to a stop where it is.
-                val loops = SCENE_MOVES_MS / SCENE_LOOP_MS
-                repeat(loops) {
-                    phase.snapTo(0f)
-                    phase.animateTo(1f, tween(SCENE_LOOP_MS, easing = LinearEasing))
+                repeat(SCENE_MOVES_MS / SCENE_LOOP_MS) {
+                    motion.snapTo(0f)
+                    motion.animateTo(1f, tween(SCENE_LOOP_MS, easing = LinearEasing))
                 }
             }
         }
     }
-    val look = remember(tone) { SceneLook.of(tone) }
-    Box(
-        modifier
-            .clearAndSetSemantics { }
-            .clipToBounds()
-            .drawWithCache {
-                val hz = horizon.toPx().coerceAtMost(size.height)
-                val fixed = SceneShapes.make(size, hz, look, density)
-                onDrawBehind {
-                    drawScene(fixed, look, hz, phase.value)
-                }
-            },
-    )
+    return motion
 }
 
 /** The colors and pieces of one sky. */
@@ -173,6 +180,8 @@ private class SceneShapes(
     val bands: List<Pair<Offset, Size>>,
     val drops: List<Offset>,
     val bolt: Path?,
+    /** Each curtain's brush and its rays: across, how tall (0 to 1) and how strong (0 to 1). */
+    val curtains: List<Pair<Brush, List<FloatArray>>>,
     val dp: Float,
 ) {
     companion object {
@@ -252,12 +261,31 @@ private class SceneShapes(
                     lineTo(x, y)
                 }
             } else null
-            return SceneShapes(fill(backPts), fill(frontPts), pines, caps, stars, puffs, bands, drops, bolt, dp)
+            val curtains = look.curtains.map { c ->
+                val base = hz * c.base
+                val tall = hz * c.height
+                val sway = hz * c.sway
+                val brush = Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.45f to c.top.copy(alpha = 0.55f),
+                    0.9f to c.bottom,
+                    1f to c.bottom.copy(alpha = 0.2f),
+                    startY = base - tall - sway,
+                    endY = base + sway,
+                )
+                val cr = Random(c.seed)
+                val step = 3f * dp
+                val rays = List((w / step).toInt() + 1) { i ->
+                    floatArrayOf(i * step, 0.45f + 0.55f * cr.nextFloat(), 0.35f + 0.65f * cr.nextFloat())
+                }
+                brush to rays
+            }
+            return SceneShapes(fill(backPts), fill(frontPts), pines, caps, stars, puffs, bands, drops, bolt, curtains, dp)
         }
     }
 }
 
-private fun DrawScope.drawScene(s: SceneShapes, look: SceneLook, hz: Float, phase: Float) {
+private fun DrawScope.drawScene(s: SceneShapes, look: SceneLook, hz: Float, phase: Float, moving: Boolean) {
     val w = size.width
     val h = size.height
     val dp = s.dp
@@ -273,7 +301,7 @@ private fun DrawScope.drawScene(s: SceneShapes, look: SceneLook, hz: Float, phas
         drawCircle(Brush.radialGradient(listOf(sun.glow.copy(alpha = 0.55f), Color.Transparent), c, rad * 4.5f), rad * 4.5f, c)
         drawCircle(sun.color, rad, c)
     }
-    look.curtains.forEach { cur -> drawCurtain(cur, hz, turn) }
+    look.curtains.forEachIndexed { i, cur -> drawCurtain(cur, s.curtains[i], hz, turn) }
     look.bands?.let { color ->
         s.bands.forEachIndexed { i, (at, sz) ->
             // Clouds drift a little while the sky moves.
@@ -287,7 +315,7 @@ private fun DrawScope.drawScene(s: SceneShapes, look: SceneLook, hz: Float, phas
     }
     s.bolt?.let { bolt ->
         // A flash now and then while it moves; a still storm keeps its bolt showing.
-        val flash = if (phase == 0f) 0.85f else if (phase % 0.5f < 0.06f) 1f else 0f
+        val flash = if (!moving) 0.85f else if (phase % 0.5f < 0.06f) 1f else 0f
         if (flash > 0f) {
             drawRect(Color(0xFFFFC777), alpha = 0.08f * flash, size = Size(w, hz))
             drawPath(bolt, Color(0xFFFFE6B0), alpha = flash, style = Stroke(2.5f * dp, cap = StrokeCap.Round))
@@ -321,27 +349,16 @@ private fun DrawScope.drawScene(s: SceneShapes, look: SceneLook, hz: Float, phas
 }
 
 /** One curtain of light: thin rays standing on a wavy line, bright at the foot, fading up. */
-private fun DrawScope.drawCurtain(c: SceneLook.Curtain, hz: Float, turn: Float) {
+private fun DrawScope.drawCurtain(c: SceneLook.Curtain, made: Pair<Brush, List<FloatArray>>, hz: Float, turn: Float) {
     val w = size.width
-    val dp = density
     val base = hz * c.base
     val tall = hz * c.height
     val sway = hz * c.sway
-    val brush = Brush.verticalGradient(
-        0f to Color.Transparent,
-        0.45f to c.top.copy(alpha = 0.55f),
-        0.9f to c.bottom,
-        1f to c.bottom.copy(alpha = 0.2f),
-        startY = base - tall - sway,
-        endY = base + sway,
-    )
-    val r = Random(c.seed)
-    val step = 3f * dp
-    var x = 0f
-    while (x < w) {
+    val width = 2.4f * density
+    val (brush, rays) = made
+    rays.forEach { (x, height, strength) ->
         val foot = base + sway * sin(x / w * 5f + turn + c.seed)
-        val ray = tall * (0.45f + 0.55f * r.nextFloat())
-        drawRect(brush, Offset(x, foot - ray), Size(step * 0.8f, ray), alpha = c.alpha * (0.35f + 0.65f * r.nextFloat()))
-        x += step
+        val ray = tall * height
+        drawRect(brush, Offset(x, foot - ray), Size(width, ray), alpha = c.alpha * strength)
     }
 }

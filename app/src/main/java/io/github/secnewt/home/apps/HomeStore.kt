@@ -76,7 +76,7 @@ class HomeStore(context: Context) {
         prefs.edit().putBoolean(SHOW_BUTTONS, show).apply()
     }
 
-    /** A home screen switch ([HomeSwitch]); sky colors and the newt start on, big tiles off. */
+    /** A home screen switch ([HomeSwitch]); all start on but big tiles. */
     fun switch(what: HomeSwitch): Boolean = prefs.getBoolean(SWITCH + what.name, what != HomeSwitch.BIG_TILES)
 
     fun setSwitch(what: HomeSwitch, on: Boolean) {

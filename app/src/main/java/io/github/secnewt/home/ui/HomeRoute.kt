@@ -114,7 +114,7 @@ fun HomeRoute(
     var addWebsite by rememberSaveable { mutableStateOf(false) }
     var sys by remember { mutableStateOf<SystemInfo?>(null) }
 
-    // Sky colors and the newt start on; big tiles start off.
+    // Everything starts on (sky colors, the newt, the sky picture, two to a row) but big tiles.
     fun isOn(what: HomeSwitch): Boolean = switches[what] ?: (what != HomeSwitch.BIG_TILES)
 
     fun closeSheets() {
