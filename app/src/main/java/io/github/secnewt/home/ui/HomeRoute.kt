@@ -527,6 +527,10 @@ fun HomeRoute(
             onHearWeather = { weather?.let { onSpeak(WeatherText.spokenWithHeadsUp(it, weatherHours(), time)) } },
             newtMood = mood,
             bigTiles = isOn(HomeSwitch.BIG_TILES),
+            // The picture follows the time and the weather even with sky colors off.
+            scene = if (isOn(HomeSwitch.SCENE)) Sky.of(hourNow.get(Calendar.HOUR_OF_DAY), weather) else null,
+            animateScene = animateBoot,
+            twoAcross = isOn(HomeSwitch.TWO_ACROSS),
         )
     }
     }
