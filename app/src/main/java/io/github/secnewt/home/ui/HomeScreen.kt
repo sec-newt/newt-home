@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.FlowRow
 import io.github.secnewt.home.apps.DayEvent
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
+import io.github.secnewt.home.apps.SkyTone
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
@@ -254,6 +259,9 @@ fun HomeScreen(
     showButtons: Boolean = true,
     newtMood: NewtMood? = null,
     bigTiles: Boolean = false,
+    scene: SkyTone? = null,
+    animateScene: Boolean = false,
+    twoAcross: Boolean = true,
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -293,7 +301,7 @@ fun HomeScreen(
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
                             weather, onWeather, headsUp, onHearWeather, showButtons,
-                            newtMood, bigTiles, onStatusTap,
+                            newtMood, bigTiles, onStatusTap, scene, animateScene, twoAcross,
                         )
                     }
                 }
@@ -344,14 +352,36 @@ private fun HomePage(
     newtMood: NewtMood?,
     bigTiles: Boolean,
     onStatusTap: () -> Unit,
+    scene: SkyTone?,
+    animateScene: Boolean,
+    twoAcross: Boolean,
 ) {
     // While typing, the results get all the room the keyboard leaves: the clock, weather,
     // events and buttons step aside until the prompt is cleared.
     val typing = view is HomeView.Results
     val clean = cleanLook()
-    // Two tiles to a row only while names fit: at large text each tile gets the full width.
-    val perRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
+    // At big text the tiles stack the icon above the name, so two still fit side by side
+    // (or one to a row, with `columns 1`).
+    val bigText = LocalDensity.current.fontScale > 1.3f
+    val perRow = if (bigText && !twoAcross) 1 else 2
     val pullUp = rememberEdgePull(up = true) { onScreen(Screen.APPS) }
+    // The sky picture: clean dark look only, and not while typing (results get plain ground).
+    val skyOn = scene != null && clean && darkScheme()
+    val sky = scene?.takeIf { skyOn && !typing }
+    val motion = rememberSkyMotion(enabled = skyOn && animateScene)
+    // On the picture every word sits on a solid card; without it nothing changes.
+    val card = if (sky != null) {
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    } else {
+        Modifier
+    }
+    // The clear window of sky at the top, before the clock.
+    val window = (LocalConfiguration.current.screenHeightDp.dp * 0.2f).coerceIn(96.dp, 200.dp)
+    Box(Modifier.fillMaxSize()) {
+    if (sky != null) SkyScene(sky, horizon = window + 8.dp, motion = motion, modifier = Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -360,8 +390,9 @@ private fun HomePage(
                 .nestedScroll(pullUp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
+            if (sky != null && !typing) item(key = "sky window") { Spacer(Modifier.height(window - 12.dp)) }
             if (!typing) item {
-                Column(Modifier.padding(top = 12.dp)) {
+                Column(Modifier.padding(top = 12.dp).then(card)) {
                     BootLine("date", bootKey, animateBoot) { alpha ->
                         Column(Modifier.bootFade(alpha)) {
                             ClockAndDate(
@@ -383,11 +414,27 @@ private fun HomePage(
             }
             when (view) {
                 HomeView.Favorites -> {
-                    item { PromptLine("ls favs", short = true, title = "Favorites") }
-                    if (favorites.isEmpty()) {
-                        item { Hint("# press and hold any app to add it here") }
+                    item {
+                        Box(Modifier.padding(top = if (sky != null) 10.dp else 0.dp).then(card)) {
+                            PromptLine("ls favs", short = true, title = "Favorites")
+                        }
                     }
-                    if (clean && !bigTiles) {
+                    if (favorites.isEmpty()) {
+                        item { Box(Modifier.padding(top = 10.dp).then(card)) { Hint("# press and hold any app to add it here") } }
+                    }
+                    if (clean && !bigTiles && perRow == 2 && bigText) {
+                        // Big text, two to a row: the icon above the name, so the name gets
+                        // the tile's whole width (and wraps, never shrinks).
+                        items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 10.dp).height(IntrinsicSize.Min),
+                            ) {
+                                pair.forEach { FavoriteTile(it, onOpen, onHold, Modifier.weight(1f).fillMaxHeight(), compact = true) }
+                                if (pair.size < perRow) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    } else if (clean && !bigTiles) {
                         // Small tiles, two to a row: the icon beside the name, so twice as many
                         // fit before anything scrolls.
                         items(favorites.chunked(perRow), key = { pair -> pair.joinToString { it.key } }) { pair ->
@@ -396,6 +443,7 @@ private fun HomePage(
                                 modifier = Modifier.padding(top = 10.dp).height(IntrinsicSize.Min),
                             ) {
                                 pair.forEach { SmallFavoriteTile(it, onOpen, onHold, Modifier.weight(1f).fillMaxHeight()) }
+                                if (pair.size < perRow) Spacer(Modifier.weight(1f))
                             }
                         }
                     } else if (clean) {
@@ -406,6 +454,7 @@ private fun HomePage(
                                 modifier = Modifier.padding(top = 10.dp).height(IntrinsicSize.Min),
                             ) {
                                 pair.forEach { FavoriteTile(it, onOpen, onHold, Modifier.weight(1f).fillMaxHeight()) }
+                                if (pair.size < perRow) Spacer(Modifier.weight(1f))
                             }
                         }
                     } else {
@@ -422,6 +471,7 @@ private fun HomePage(
             }
         }
         Prompt(query, onQueryChange, onSubmit, onVoice)
+    }
     }
 }
 
@@ -1440,13 +1490,19 @@ private fun NextEventCard(events: List<DayEvent>, now: Long, time: (Long) -> Str
 
 /** A favorite as a big tile in the clean look, with "2 missed" as a red word-pill when there is one. */
 @Composable
-private fun FavoriteTile(app: LauncherApp, onOpen: (LauncherApp) -> Unit, onHold: (LauncherApp) -> Unit, modifier: Modifier = Modifier) {
+private fun FavoriteTile(
+    app: LauncherApp,
+    onOpen: (LauncherApp) -> Unit,
+    onHold: (LauncherApp) -> Unit,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
     val haptics = LocalHapticFeedback.current
     val shape = RoundedCornerShape(16.dp)
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
         modifier = modifier
-            .heightIn(min = 84.dp)
+            .heightIn(min = if (compact) 64.dp else 84.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .border(2.dp, MaterialTheme.colorScheme.outlineVariant, shape)
@@ -1459,10 +1515,19 @@ private fun FavoriteTile(app: LauncherApp, onOpen: (LauncherApp) -> Unit, onHold
                 },
                 onClick = { onOpen(app) },
             )
-            .padding(12.dp),
+            .padding(if (compact) 10.dp else 12.dp),
     ) {
-        AppIcon(app, size = 40.dp)
-        Text(app.name, fontFamily = rowFont(), fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface)
+        AppIcon(app, size = if (compact) 34.dp else 40.dp)
+        Text(
+            app.name,
+            fontFamily = rowFont(),
+            fontWeight = FontWeight.Bold,
+            // The same size as the small tile's name, so big text never gets smaller here.
+            fontSize = if (compact) 19.sp else 20.sp,
+            // A long name breaks at a hyphen, not mid-letter, when it has to wrap.
+            style = LocalTextStyle.current.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         app.alert?.let { NewtStateChip(it, NewtTone.Danger) }
     }
 }

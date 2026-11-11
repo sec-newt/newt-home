@@ -17,7 +17,7 @@ fun SkyTheme(tone: SkyTone, content: @Composable () -> Unit) {
         content()
         return
     }
-    val dark = scheme.background.luminance() < 0.5f
+    val dark = darkScheme()
     MaterialTheme(
         colorScheme = scheme.copy(primary = tone.start(dark), secondary = tone.end(dark)),
         typography = MaterialTheme.typography,
@@ -25,3 +25,7 @@ fun SkyTheme(tone: SkyTone, content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+/** Whether the home screen is in dark mode right now (its background is dark). */
+@Composable
+internal fun darkScheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f

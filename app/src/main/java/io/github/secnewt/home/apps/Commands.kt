@@ -53,6 +53,8 @@ enum class HomeSwitch(val word: String, val title: String, val hint: String, val
     NEWT("pet", "Newt by the clock", "Clean look: shows how the phone and the day are going", "on", "off"),
     BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small"),
     MATH("answers", "Math answers", "Answers math and conversions as you type, like 5 km to mi", "on", "off"),
+    SCENE("scene", "Sky picture", "Clean dark look: northern lights, sun, rain or snow behind the home screen", "on", "off"),
+    TWO_ACROSS("columns", "Two favorites to a row", "Clean look: two to a row even at big text sizes", "2", "1"),
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -97,6 +99,8 @@ object Commands {
         CommandHelp("look clean", "Plain cards and words, like Newt Phone. look terminal goes back", HelpTopic.APPS),
         CommandHelp("buttons off", "Hides the Folders and All apps buttons; swiping still works. buttons on brings them back", HelpTopic.APPS),
         CommandHelp("sky off", "Plain blue and purple outlines. sky on lets them follow the time and the weather", HelpTopic.APPS),
+        CommandHelp("scene off", "Hides the sky picture behind the home screen. scene on brings it back", HelpTopic.APPS),
+        CommandHelp("columns 1", "One favorite to a row at big text sizes. columns 2 puts two side by side", HelpTopic.APPS),
         CommandHelp("pet off", "Hides the newt by the clock. pet on brings it back", HelpTopic.APPS),
         CommandHelp("answers off", "Stops showing math and conversion answers. answers on brings them back", HelpTopic.MATH),
         CommandHelp("tiles big", "Taller favorites, icon above the name. tiles small fits more on the screen", HelpTopic.APPS),
@@ -274,6 +278,16 @@ object Commands {
                 true -> "use big favorite tiles"
                 false -> "use small favorite tiles, so more fit"
                 null -> "switch between big and small favorite tiles"
+            }
+            HomeSwitch.SCENE -> when (command.on) {
+                true -> "show the sky picture behind the home screen"
+                false -> "hide the sky picture"
+                null -> "show or hide the sky picture"
+            }
+            HomeSwitch.TWO_ACROSS -> when (command.on) {
+                true -> "put two favorites to a row"
+                false -> "put one favorite to a row at big text sizes"
+                null -> "switch between one and two favorites to a row"
             }
             HomeSwitch.MATH -> when (command.on) {
                 true -> "answer math and conversions as you type"
