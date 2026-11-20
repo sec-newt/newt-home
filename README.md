@@ -41,8 +41,18 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   `pet off` hides it.
 - **Small tiles (clean look).** Favorites show the icon beside the name, so eight fit with
   room to spare; the date and weather share a line. `tiles big` brings back the tall tiles.
+- **Two favorites to a row, even at big text.** At large text sizes (like 200%) each tile puts
+  the icon above the name, so the name gets the tile's whole width and wraps (with a hyphen if
+  a word is too long) instead of getting smaller. `columns 1` goes back to one to a row.
+- **Sky picture (clean look, dark mode).** Behind the home screen: northern lights at night,
+  a sunrise, a sunny sky with clouds, a sunset, grey clouds, rain, snow, or a red storm sky with
+  lightning, picked by the time of day and Newt Weather like the sky colors. It shows in a clear
+  strip at the top and between the tiles; every word sits on a solid card, never on the
+  picture. It moves for 30 seconds when you come home, then holds still to save battery, and
+  doesn't move at all when Android's animations are off. It hides while you type. `scene off`
+  turns it off.
 - **Every one of these is a switch.** At the end of `help`, under **Screen**: Sky colors,
-  Newt by the clock, Big tiles and Math answers, next to Clean look and Screen buttons.
+  Newt by the clock, Big tiles, Math answers, Sky picture and Two favorites to a row, next to Clean look and Screen buttons.
 - **Swipe down to close.** Every card that slides up (the calendar, commands, app
   menus and the rest) closes with a swipe down, as well as with back or tapping outside.
   It follows your finger, so a short drag springs back.

@@ -114,7 +114,7 @@ fun HomeRoute(
     var addWebsite by rememberSaveable { mutableStateOf(false) }
     var sys by remember { mutableStateOf<SystemInfo?>(null) }
 
-    // Sky colors and the newt start on; big tiles start off.
+    // Everything starts on (sky colors, the newt, the sky picture, two to a row) but big tiles.
     fun isOn(what: HomeSwitch): Boolean = switches[what] ?: (what != HomeSwitch.BIG_TILES)
 
     fun closeSheets() {
@@ -527,6 +527,10 @@ fun HomeRoute(
             onHearWeather = { weather?.let { onSpeak(WeatherText.spokenWithHeadsUp(it, weatherHours(), time)) } },
             newtMood = mood,
             bigTiles = isOn(HomeSwitch.BIG_TILES),
+            // The picture follows the time and the weather even with sky colors off.
+            scene = if (isOn(HomeSwitch.SCENE)) Sky.of(hourNow.get(Calendar.HOUR_OF_DAY), weather) else null,
+            animateScene = animateBoot,
+            twoAcross = isOn(HomeSwitch.TWO_ACROSS),
         )
     }
     }

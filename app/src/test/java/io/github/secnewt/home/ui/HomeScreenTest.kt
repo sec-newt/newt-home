@@ -162,6 +162,8 @@ class HomeScreenTest {
         showButtons: Boolean = true,
         newtMood: NewtMood? = null,
         bigTiles: Boolean = false,
+        scene: SkyTone? = null,
+        twoAcross: Boolean = true,
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -200,6 +202,8 @@ class HomeScreenTest {
         showButtons = showButtons,
         newtMood = newtMood,
         bigTiles = bigTiles,
+        scene = scene,
+        twoAcross = twoAcross,
     )
 
     /** The screen squeezed into what an open keyboard leaves (about the top 60%). */
@@ -932,6 +936,48 @@ class HomeScreenTest {
     }
 
     @Test
+    fun cleanHomeLargeTextOneToARow() = render("clean_home_200_percent_columns_1", dark = true, fontScale = 2f) {
+        Clean { Home(favs = phoneMissed, twoAcross = false) }
+    }
+
+    // The sky picture, in every sky, with the words on solid cards in front of it.
+    @Test
+    fun sceneNight() = render("scene_night", dark = true) { Clean { Home(weather = sunny, scene = SkyTone.NIGHT, agenda = Agenda.Today(events)) } }
+
+    @Test
+    fun sceneDawn() = render("scene_dawn", dark = true) { Clean { Home(weather = sunny, scene = SkyTone.DAWN) } }
+
+    @Test
+    fun sceneDay() = render("scene_day", dark = true) { Clean { Home(weather = sunny, scene = SkyTone.DAY) } }
+
+    @Test
+    fun sceneDusk() = render("scene_dusk", dark = true) { Clean { Home(weather = sunny, scene = SkyTone.DUSK) } }
+
+    @Test
+    fun sceneOvercast() = render("scene_overcast", dark = true) { Clean { Home(scene = SkyTone.OVERCAST) } }
+
+    @Test
+    fun sceneRain() = render("scene_rain", dark = true) { Clean { Home(scene = SkyTone.RAIN, headsUp = "Rain likely around 3 PM", weather = sunny) } }
+
+    @Test
+    fun sceneSnow() = render("scene_snow", dark = true) { Clean { Home(scene = SkyTone.SNOW) } }
+
+    @Test
+    fun sceneStorm() = render("scene_storm", dark = true) { Clean { Home(weather = stormWarning, scene = SkyTone.STORM) } }
+
+    @Test
+    fun sceneLargeText() = render("scene_night_200_percent", dark = true, fontScale = 2f) {
+        Clean { Home(favs = phoneMissed, weather = sunny, scene = SkyTone.NIGHT) }
+    }
+
+    @Test
+    fun sceneNoFavoritesYet() = render("scene_no_favorites", dark = true) { Clean { Home(favs = emptyList(), scene = SkyTone.NIGHT) } }
+
+    // Light mode and the terminal look keep their plain ground.
+    @Test
+    fun sceneIsDarkOnly() = render("scene_light_is_plain", dark = false) { Clean { Home(scene = SkyTone.NIGHT) } }
+
+    @Test
     fun cleanCommand() = render("clean_command_dark", dark = true) {
         Clean { Home(view = commandResults("timer 10", "start a 10 min timer", ready = true), query = "timer 10") }
     }
@@ -1291,16 +1337,28 @@ class HomeScreenTest {
         Clean { Home(favs = favorites.mapIndexed { i, a -> if (i == 0) a.copy(alert = "2 missed") else a }, weather = sunny, agenda = Agenda.Today(events)) }
     }
 
-    @Test
-    fun cleanFavoritesStackOneToARowAtLargeText() {
+    private fun favoriteBoundsAtLargeText(twoAcross: Boolean): Pair<androidx.compose.ui.geometry.Rect, androidx.compose.ui.geometry.Rect> {
         composeRule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                HomeTheme(darkTheme = true) { Clean { Home() } }
+                HomeTheme(darkTheme = true) { Clean { Home(twoAcross = twoAcross) } }
             }
         }
         val first = composeRule.onNodeWithText(favorites[0].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val second = composeRule.onNodeWithText(favorites[1].name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        return first to second
+    }
+
+    @Test
+    fun cleanFavoritesStayTwoToARowAtLargeText() {
+        val (first, second) = favoriteBoundsAtLargeText(twoAcross = true)
+        val width = composeRule.onRoot().fetchSemanticsNode().size.width
+        assertTrue("side by side", second.left >= width / 2f && second.top < first.bottom)
+    }
+
+    @Test
+    fun columnsOneStacksFavoritesOneToARowAtLargeText() {
+        val (first, second) = favoriteBoundsAtLargeText(twoAcross = false)
         assertTrue("one to a row", second.top > first.bottom)
     }
 

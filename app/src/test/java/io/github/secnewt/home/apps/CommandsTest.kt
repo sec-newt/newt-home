@@ -142,6 +142,16 @@ class CommandsTest {
     }
 
     @Test
+    fun `scene and columns switch the sky picture and favorites to a row`() {
+        assertEquals(Command.Switch(HomeSwitch.SCENE, false), ready("scene off"))
+        assertEquals(Command.Switch(HomeSwitch.SCENE, true), ready("Scene on"))
+        assertEquals(Command.Switch(HomeSwitch.TWO_ACROSS, false), ready("columns 1"))
+        assertEquals(Command.Switch(HomeSwitch.TWO_ACROSS, true), ready("columns 2"))
+        assertEquals(Command.Switch(HomeSwitch.TWO_ACROSS, false), ready("columns off"))
+        assertTrue(Commands.parse("columns") is CommandMatch.Incomplete)
+    }
+
+    @Test
     fun `a switch word alone asks for on or off, so Enter still opens an app`() {
         assertTrue(Commands.parse("sky") is CommandMatch.Incomplete)
         assertTrue(Commands.parse("pet") is CommandMatch.Incomplete)
