@@ -22,7 +22,9 @@ CI runs the same checks on every PR (see `.github/workflows/build.yml`).
 ./gradlew assembleDebug && scripts/check-permissions.sh app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Paste the result. Don't say "tests pass" without the output.
+Paste the result. Don't say "tests pass" without the output. If Gradle can't download
+the Newt packages (a 401), the GitHub login needs `read:packages`: ask the owner to run
+`gh auth refresh -s read:packages`, and lean on CI meanwhile, saying so in the PR.
 
 ## Rules that are easy to break
 
@@ -37,7 +39,7 @@ Paste the result. Don't say "tests pass" without the output.
 - **README.md is the user's manual.** Update "What it does so far" when behavior changes,
   in plain words.
 
-## Before opening a PR
+## Before opening a PR, and after every push to one
 
 1. Run the checks above.
 2. **Review it.** Run `/code-review` on the branch with [REVIEW.md](REVIEW.md) as the rules,
@@ -48,6 +50,9 @@ Paste the result. Don't say "tests pass" without the output.
    start with the count ("Nothing to fix." or "1 important, fixed in abc123."), then each
    finding with its file and line, its tag, and what was done about it. The owner reads
    the review there.
+4. **Every later push to the PR gets the same review** of what changed since the last
+   one, however small, posted as a new comment that names the commits it covers and the
+   reviews that ran. If a review was skipped, the comment says so.
 
 The automatic GitHub review (`.github/workflows/claude-review.yml`) is switched off until a
 login bug in Claude's GitHub Action is fixed; this local review takes its place.
