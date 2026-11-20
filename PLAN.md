@@ -153,7 +153,7 @@ Every option is a word with one plain line under it saying what it changes. No u
 - [x] Create the GitHub repo
 - [x] Clickable mock-up
 - [x] Project skeleton and APK build on GitHub Actions (copy Newt Phone's setup: CI checks, signed releases, Obtainium)
-- [ ] Phase 1 build
+- [x] Phase 1 build
   - [x] Home screen, favorites, prompt search, opening the only match, All apps
   - [x] Folders as a tree in a second column, remembered open folder, search by folder name
   - [x] The gadget look: scanlines and ASCII newt, boot type-out, glow, folder colors
@@ -164,7 +164,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] Letter strip in All apps
   - [x] Letter grid in All apps
 
-- [ ] Phase 2
+- [x] Phase 2
   - [x] Accept "Add to home screen" (websites from the browser), with Remove shortcut
   - [x] Add a website by hand (opens in the default browser)
   - [x] App shortcuts on the press-and-hold menu ("Jump to")
@@ -177,6 +177,10 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] `ask` (hands a question to the Claude app) and `sys` (system card, also on tapping the status line)
   - [x] Room for results while typing, the prompt on folders too, and `buttons off`
   - [x] Sky colors (time of day and weather), the newt by the clock, small favorite tiles; each a switch (`sky`, `pet`, `tiles`)
+  - [x] Weather by the date from Newt Weather, spoken weather and a rain heads-up
+  - [x] "3 unread" under Newt Messages
+  - [x] Math and conversions at the prompt
+  - [x] Sky picture behind the home screen, and two favorites to a row at big text
 - [ ] Next ideas: `alias` and ▶ command tiles in favorites, `fg` / back to the last app, a verse when you unlock, bedside mode while charging
 
 ## GrapheneOS notes
