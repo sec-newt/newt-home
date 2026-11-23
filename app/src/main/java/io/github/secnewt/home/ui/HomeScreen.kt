@@ -523,7 +523,13 @@ private fun LazyListScope.resultItems(
     }
     if (view.people.isNotEmpty()) {
         item(key = "people") { PeopleHeading() }
-        items(view.people, key = { "person:${it.id}" }) { person -> PersonRow(person, onPerson) }
+        // Two people with the same name (say, from two accounts) also show their first number,
+        // so they never look or read out the same.
+        val repeated = view.people.groupingBy { it.name }.eachCount().filterValues { it > 1 }.keys
+        items(view.people, key = { "person:${it.id}" }) { person ->
+            val tell = person.numbers.first().let { listOf(it.type, it.number).filter { s -> s.isNotEmpty() } }
+            PersonRow(person, onPerson, tellApart = if (person.name in repeated) tell else null)
+        }
     }
 }
 
@@ -1657,14 +1663,15 @@ private fun PeopleHeading() {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PersonRow(person: Person, onPerson: (PersonAction) -> Unit) {
+private fun PersonRow(person: Person, onPerson: (PersonAction) -> Unit, tellApart: List<String>? = null) {
     val clean = cleanLook()
     val shape = RoundedCornerShape(if (clean) 14.dp else 10.dp)
     val interactions = remember { MutableInteractionSource() }
     var open by rememberSaveable(person.id) { mutableStateOf(false) }
     // Which button is asking for a number: "Call" or "Text", or null for the three buttons.
     var picking by rememberSaveable(person.id) { mutableStateOf<String?>(null) }
-    val name = person.name
+    // What TalkBack and the buttons call them: "Sam Ortiz", or "Sam Ortiz, work 555-0199".
+    val name = if (tellApart == null) person.name else "${person.name}, ${tellApart.joinToString(" ")}"
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -1685,13 +1692,24 @@ private fun PersonRow(person: Person, onPerson: (PersonAction) -> Unit) {
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                name,
-                fontFamily = rowFont(),
-                fontWeight = if (clean) FontWeight.Bold else null,
-                fontSize = if (clean) 21.sp else 18.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Column {
+                Text(
+                    person.name,
+                    fontFamily = rowFont(),
+                    fontWeight = if (clean) FontWeight.Bold else null,
+                    fontSize = if (clean) 21.sp else 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (tellApart != null) {
+                    Text(
+                        tellApart.joinToString(" · "),
+                        fontFamily = rowFont(),
+                        fontSize = if (clean) 17.sp else 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
         if (open) {
             val choosing = picking

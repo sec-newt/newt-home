@@ -85,8 +85,10 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   Tap a name for **Call** (the number goes in the dialpad; you still press call), **Text**
   or **Open**. If someone has more than one number, Call and Text ask which one. Newt Home
   asks for contact access when you turn it on; with no internet, your contacts never leave
-  the phone. A person never opens by itself, and while one matches, an app doesn't either.
-  `people off` hides them again.
+  the phone. A person never opens by itself, and while someone's name has what you typed
+  in it (`sam` for Sam Ortiz), an app doesn't open by itself either. Two people with the
+  same name also show their first number, so you can tell them apart. `people off` hides
+  them again.
 - **The prompt.** It's on both home and folders. Type part of an app's name, or a folder's name; capitals don't matter.
   While you type, the clock, weather, events and buttons step aside so the results have
   the room the keyboard leaves; clear the prompt and they come back. When only one

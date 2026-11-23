@@ -376,6 +376,15 @@ class HomeScreenTest {
     }
 
     @Test
+    fun twoPeopleWithTheSameNameReadDifferently() {
+        val otherSam = Person(3, "k3", "Sam Ortiz", listOf(PhoneNumber("555-0199", "work")))
+        render("search_people_same_name", dark = true) { Home(view = results("sam", contacts + otherSam), query = "sam") }
+        composeRule.onNodeWithContentDescription("Sam Ortiz, mobile 555-0102, contact").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sam Ortiz, work 555-0199, contact").performClick()
+        composeRule.onNodeWithContentDescription("Call Sam Ortiz, work 555-0199").assertIsDisplayed()
+    }
+
+    @Test
     fun searchNoMatch() = render("search_no_match", dark = true) { Home(view = results("zz"), query = "zz") }
 
     @Test
