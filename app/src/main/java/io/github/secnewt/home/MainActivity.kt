@@ -51,6 +51,7 @@ import io.github.secnewt.home.apps.CalendarRepository
 import io.github.secnewt.home.apps.Command
 import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.ContactRepository
+import io.github.secnewt.home.apps.People
 import io.github.secnewt.home.apps.Person
 import io.github.secnewt.home.apps.PersonAction
 import io.github.secnewt.home.apps.DayEvent
@@ -180,10 +181,13 @@ class MainActivity : ComponentActivity() {
     // People in search: off until you switch it on, then names and numbers in memory only.
     private var people by mutableStateOf<List<Person>>(emptyList())
     private var watchingContacts = false
+    // True while Android's "allow access to contacts?" question is showing.
+    private var askingContacts = false
     private val contactChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = refreshPeople()
     }
     private val askContacts = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        askingContacts = false
         if (!granted) {
             switches = switches + (HomeSwitch.PEOPLE to false)
             store.setSwitch(HomeSwitch.PEOPLE, false)
@@ -371,7 +375,12 @@ class MainActivity : ComponentActivity() {
         bootKey++
         // Calendar access can be turned off in Settings while we're away.
         refreshAgenda()
-        // So can contact access.
+        // So can contact access; then people switches off and says why.
+        if (People.accessLost(switches[HomeSwitch.PEOPLE] ?: store.switch(HomeSwitch.PEOPLE), canReadContacts(), askingContacts)) {
+            switches = switches + (HomeSwitch.PEOPLE to false)
+            store.setSwitch(HomeSwitch.PEOPLE, false)
+            say("People in search is off: contact access was turned off. people on turns it back on.")
+        }
         refreshPeople()
         refreshMissed()
         refreshUnread()
@@ -568,7 +577,10 @@ class MainActivity : ComponentActivity() {
                 switches = switches + (command.what to on)
                 store.setSwitch(command.what, on)
                 if (command.what == HomeSwitch.PEOPLE) {
-                    if (on && !canReadContacts()) askContacts.launch(Manifest.permission.READ_CONTACTS)
+                    if (on && !canReadContacts()) {
+                        askingContacts = true
+                        askContacts.launch(Manifest.permission.READ_CONTACTS)
+                    }
                     refreshPeople()
                 }
             }

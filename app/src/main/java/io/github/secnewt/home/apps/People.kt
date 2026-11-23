@@ -71,8 +71,19 @@ object People {
     fun closeMatch(people: List<Person>, query: String): Boolean =
         people.any { AppSearch.match(it.name, query)?.let { m -> m.rank >= AppSearch.Match.INSIDE.rank } == true }
 
+    /**
+     * People is on but contact access was taken away (in Settings, say), and Android isn't in
+     * the middle of asking for it. Then the switch goes off, so `help` never says "on" while
+     * nobody can show.
+     */
+    fun accessLost(on: Boolean, canRead: Boolean, asking: Boolean): Boolean = on && !canRead && !asking
+
     /** `DisplayNameSources.ORGANIZATION`: a company name or better; below it is an email or number. */
     private const val REAL_NAME = 30
 
-    private fun digits(number: String): String = number.filter { it.isDigit() || it == '+' }
+    /**
+     * The number to compare by: its last 10 digits, so "+1 555-010-0100" and "(555) 010-0100"
+     * count as one. Shorter numbers compare whole.
+     */
+    private fun digits(number: String): String = number.filter { it.isDigit() }.takeLast(10)
 }

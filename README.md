@@ -88,7 +88,8 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
   the phone. A person never opens by itself, and while someone's name has what you typed
   in it (`sam` for Sam Ortiz), an app doesn't open by itself either. Two people with the
   same name also show their first number, so you can tell them apart. `people off` hides
-  them again.
+  them again. If contact access is turned off in Settings, People switches itself off and
+  says so; `people on` asks again.
 - **The prompt.** It's on both home and folders. Type part of an app's name, or a folder's name; capitals don't matter.
   While you type, the clock, weather, events and buttons step aside so the results have
   the room the keyboard leaves; clear the prompt and they come back. When only one

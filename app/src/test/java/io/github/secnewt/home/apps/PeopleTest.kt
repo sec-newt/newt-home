@@ -74,4 +74,18 @@ class PeopleTest {
         assertTrue(People.closeMatch(people, "sam"))
         assertTrue(People.closeMatch(people, "ortiz"))
     }
+
+    @Test
+    fun `the same number with and without the country code counts once`() {
+        val people = People.fromRows(listOf(row(1, "Sam Ortiz", "+1 555-010-0100"), row(1, "Sam Ortiz", "(555) 010-0100"), row(1, "Sam Ortiz", "555-0199")))
+        assertEquals(listOf("+1 555-010-0100", "555-0199"), people[0].numbers.map { it.number })
+    }
+
+    @Test
+    fun `losing contact access switches people off, but not while Android is asking`() {
+        assertTrue(People.accessLost(on = true, canRead = false, asking = false))
+        assertFalse(People.accessLost(on = true, canRead = false, asking = true))
+        assertFalse(People.accessLost(on = true, canRead = true, asking = false))
+        assertFalse(People.accessLost(on = false, canRead = false, asking = false))
+    }
 }
