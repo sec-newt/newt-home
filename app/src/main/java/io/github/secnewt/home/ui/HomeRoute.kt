@@ -38,6 +38,8 @@ import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.HomeSwitch
+import io.github.secnewt.home.apps.Person
+import io.github.secnewt.home.apps.PersonAction
 import io.github.secnewt.home.apps.NewtMood
 import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.Sky
@@ -99,6 +101,8 @@ fun HomeRoute(
     weatherHours: () -> List<WeatherHour> = { emptyList() },
     onOpenWeather: () -> Unit = {},
     onSpeak: (String) -> Unit = {},
+    people: List<Person> = emptyList(),
+    onPerson: (PersonAction) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }

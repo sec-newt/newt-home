@@ -14,6 +14,11 @@ android.permission.ACCESS_NETWORK_STATE
 # to showing them, and with no internet the events can't leave the phone.
 android.permission.READ_CALENDAR
 #
+# People in search: names and phone numbers of your contacts, so typing part of a
+# name shows them to call, text or open. Asked for only after you turn people on, and
+# with no internet they can't leave the phone.
+android.permission.READ_CONTACTS
+#
 # The prompt's timer and alarm commands: hands a new timer or alarm to the
 # clock app. It can't read or change the alarms already set.
 com.android.alarm.permission.SET_ALARM
