@@ -88,4 +88,16 @@ class PeopleTest {
         assertFalse(People.accessLost(on = true, canRead = true, asking = false))
         assertFalse(People.accessLost(on = false, canRead = false, asking = false))
     }
+
+    @Test
+    fun `numbers in different countries stay apart`() {
+        val people = People.fromRows(listOf(row(1, "Ana Diaz", "+1 555-010-0100"), row(1, "Ana Diaz", "+52 555-010-0100")))
+        assertEquals(2, people[0].numbers.size)
+    }
+
+    @Test
+    fun `numbers with letters stay apart`() {
+        val people = People.fromRows(listOf(row(1, "Shop", "1-800-FLOWERS"), row(1, "Shop", "1-800-CONTACTS")))
+        assertEquals(2, people[0].numbers.size)
+    }
 }

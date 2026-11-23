@@ -188,10 +188,11 @@ class MainActivity : ComponentActivity() {
     }
     private val askContacts = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         askingContacts = false
+        // Kept short: Android cuts a message to two lines, and at big text sizes that's few words.
         if (!granted) {
             switches = switches + (HomeSwitch.PEOPLE to false)
             store.setSwitch(HomeSwitch.PEOPLE, false)
-            say("Contact access is off. Turn it on under Settings → Apps → Newt Home → Permissions.")
+            say("No contact access, so people is off")
         }
         refreshPeople()
     }
@@ -379,7 +380,7 @@ class MainActivity : ComponentActivity() {
         if (People.accessLost(switches[HomeSwitch.PEOPLE] ?: store.switch(HomeSwitch.PEOPLE), canReadContacts(), askingContacts)) {
             switches = switches + (HomeSwitch.PEOPLE to false)
             store.setSwitch(HomeSwitch.PEOPLE, false)
-            say("People in search is off: contact access was turned off. people on turns it back on.")
+            say("No contact access, so people is off")
         }
         refreshPeople()
         refreshMissed()

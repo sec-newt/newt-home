@@ -82,8 +82,13 @@ object People {
     private const val REAL_NAME = 30
 
     /**
-     * The number to compare by: its last 10 digits, so "+1 555-010-0100" and "(555) 010-0100"
-     * count as one. Shorter numbers compare whole.
+     * The number to compare by. A leading US/Canada `1` on an 11-digit number is dropped, so
+     * "+1 555-010-0100" and "(555) 010-0100" count as one, while "+52 555-010-0100" stays
+     * apart. Numbers with letters ("1-800-FLOWERS") compare as typed.
      */
-    private fun digits(number: String): String = number.filter { it.isDigit() }.takeLast(10)
+    private fun digits(number: String): String {
+        if (number.any { it.isLetter() }) return number.trim().lowercase()
+        val d = number.filter { it.isDigit() }
+        return if (d.length == 11 && d.startsWith('1')) d.drop(1) else d
+    }
 }
