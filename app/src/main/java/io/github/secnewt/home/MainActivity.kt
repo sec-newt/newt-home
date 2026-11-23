@@ -28,6 +28,7 @@ import android.os.UserManager
 import android.os.UserHandle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -49,6 +50,10 @@ import io.github.secnewt.home.apps.AppRepository
 import io.github.secnewt.home.apps.CalendarRepository
 import io.github.secnewt.home.apps.Command
 import io.github.secnewt.home.apps.Commands
+import io.github.secnewt.home.apps.ContactRepository
+import io.github.secnewt.home.apps.People
+import io.github.secnewt.home.apps.Person
+import io.github.secnewt.home.apps.PersonAction
 import io.github.secnewt.home.apps.DayEvent
 import io.github.secnewt.home.apps.AppSearch
 import io.github.secnewt.home.apps.DeviceStatus
@@ -173,6 +178,25 @@ class MainActivity : ComponentActivity() {
         refreshAgenda()
     }
 
+    // People in search: off until you switch it on, then names and numbers in memory only.
+    private var people by mutableStateOf<List<Person>>(emptyList())
+    private var watchingContacts = false
+    // True while Android's "allow access to contacts?" question is showing.
+    private var askingContacts = false
+    private val contactChanges = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) = refreshPeople()
+    }
+    private val askContacts = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        askingContacts = false
+        // Kept short: Android cuts a message to two lines, and at big text sizes that's few words.
+        if (!granted) {
+            switches = switches + (HomeSwitch.PEOPLE to false)
+            store.setSwitch(HomeSwitch.PEOPLE, false)
+            say("No contact access, so people is off")
+        }
+        refreshPeople()
+    }
+
     /** Android tells the home app when apps are installed, updated or removed. */
     private val packageChanges = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = reload()
@@ -279,6 +303,8 @@ class MainActivity : ComponentActivity() {
                         },
                         onNewDay = ::refreshAgenda,
                         onCommand = ::runCommand,
+                        people = people,
+                        onPerson = ::actOn,
                         hidden = hidden,
                         searchWords = searchWords,
                         onHiddenChange = {
@@ -323,6 +349,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         watcher.stop()
         stopWatchingCalendar()
+        stopWatchingContacts()
         contentResolver.unregisterContentObserver(missedChanges)
         contentResolver.unregisterContentObserver(unreadChanges)
         contentResolver.unregisterContentObserver(weatherChanges)
@@ -349,6 +376,13 @@ class MainActivity : ComponentActivity() {
         bootKey++
         // Calendar access can be turned off in Settings while we're away.
         refreshAgenda()
+        // So can contact access; then people switches off and says why.
+        if (People.accessLost(switches[HomeSwitch.PEOPLE] ?: store.switch(HomeSwitch.PEOPLE), canReadContacts(), askingContacts)) {
+            switches = switches + (HomeSwitch.PEOPLE to false)
+            store.setSwitch(HomeSwitch.PEOPLE, false)
+            say("No contact access, so people is off")
+        }
+        refreshPeople()
         refreshMissed()
         refreshUnread()
         refreshWeather()
@@ -411,6 +445,56 @@ class MainActivity : ComponentActivity() {
         if (!watchingCalendar) return
         contentResolver.unregisterContentObserver(calendarChanges)
         watchingCalendar = false
+    }
+
+    private fun canReadContacts(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+
+    /** Reads people for search when people is on and access is given; otherwise forgets them. */
+    private fun refreshPeople() {
+        val on = switches[HomeSwitch.PEOPLE] ?: store.switch(HomeSwitch.PEOPLE)
+        if (!on || !canReadContacts()) {
+            people = emptyList()
+            stopWatchingContacts()
+            return
+        }
+        watchContacts()
+        lifecycleScope.launch {
+            val found = withContext(Dispatchers.IO) { ContactRepository(this@MainActivity).people() }
+            // Switched off, or access taken away, while reading.
+            people = if ((switches[HomeSwitch.PEOPLE] ?: false) && canReadContacts()) found else emptyList()
+        }
+    }
+
+    /** Reads again when a contact is added, changed or synced, but only while people is on. */
+    private fun watchContacts() {
+        if (watchingContacts) return
+        try {
+            contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactChanges)
+            watchingContacts = true
+        } catch (e: SecurityException) {
+            watchingContacts = false
+        }
+    }
+
+    private fun stopWatchingContacts() {
+        if (!watchingContacts) return
+        contentResolver.unregisterContentObserver(contactChanges)
+        watchingContacts = false
+    }
+
+    /** A person's Call, Text or Open button. Call fills in the dialpad; you still press call. */
+    private fun actOn(action: PersonAction) {
+        when (action) {
+            is PersonAction.Call ->
+                if (!tryStart(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", action.number, null)))) say("No phone app found")
+            is PersonAction.Text ->
+                if (!tryStart(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", action.number, null)))) say("No messages app found")
+            is PersonAction.Open -> {
+                val uri = ContactsContract.Contacts.getLookupUri(action.person.id, action.person.lookupKey)
+                if (!tryStart(Intent(Intent.ACTION_VIEW, uri))) say("No contacts app found")
+            }
+        }
     }
 
     private fun setShowEvents(show: Boolean?) {
@@ -493,6 +577,13 @@ class MainActivity : ComponentActivity() {
                 val on = command.on ?: !(switches[command.what] ?: store.switch(command.what))
                 switches = switches + (command.what to on)
                 store.setSwitch(command.what, on)
+                if (command.what == HomeSwitch.PEOPLE) {
+                    if (on && !canReadContacts()) {
+                        askingContacts = true
+                        askContacts.launch(Manifest.permission.READ_CONTACTS)
+                    }
+                    refreshPeople()
+                }
             }
             // Android 13+ shows its own "Copied" note, and can show what was copied.
             is Command.Answer -> getSystemService(ClipboardManager::class.java)

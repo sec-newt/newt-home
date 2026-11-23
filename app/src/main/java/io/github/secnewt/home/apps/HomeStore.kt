@@ -76,8 +76,8 @@ class HomeStore(context: Context) {
         prefs.edit().putBoolean(SHOW_BUTTONS, show).apply()
     }
 
-    /** A home screen switch ([HomeSwitch]); all start on but big tiles. */
-    fun switch(what: HomeSwitch): Boolean = prefs.getBoolean(SWITCH + what.name, what != HomeSwitch.BIG_TILES)
+    /** A home screen switch ([HomeSwitch]), starting as [HomeSwitch.defaultOn]. */
+    fun switch(what: HomeSwitch): Boolean = prefs.getBoolean(SWITCH + what.name, what.defaultOn)
 
     fun setSwitch(what: HomeSwitch, on: Boolean) {
         prefs.edit().putBoolean(SWITCH + what.name, on).apply()

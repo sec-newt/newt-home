@@ -42,6 +42,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.PhoneNumber
+import io.github.secnewt.home.apps.People
+import io.github.secnewt.home.apps.PersonAction
+import io.github.secnewt.home.apps.Person
 import io.github.secnewt.home.apps.AppShortcut
 import io.github.secnewt.home.apps.Commands
 import io.github.secnewt.home.apps.DayEvent
@@ -164,6 +168,7 @@ class HomeScreenTest {
         bigTiles: Boolean = false,
         scene: SkyTone? = null,
         twoAcross: Boolean = true,
+        onPerson: (PersonAction) -> Unit = {},
     ) = HomeScreen(
         clock = "13:22",
         date = "Fri, Oct 9",
@@ -204,6 +209,7 @@ class HomeScreenTest {
         bigTiles = bigTiles,
         scene = scene,
         twoAcross = twoAcross,
+        onPerson = onPerson,
     )
 
     /** The screen squeezed into what an open keyboard leaves (about the top 60%). */
@@ -263,10 +269,16 @@ class HomeScreenTest {
         onDismiss = {},
     )
 
-    private fun results(query: String) = HomeView.Results(
+    private fun results(query: String, people: List<Person> = emptyList()) = HomeView.Results(
         query,
         AppSearch.search(apps, query, name = { it.name }, folder = { a -> folders.firstOrNull { a in it.apps }?.name }),
+        people = People.search(people, query),
     )
+
+    // Made-up people with 555 numbers.
+    private val sarah = Person(1, "k1", "Sarah Lee", listOf(PhoneNumber("555-0100", "mobile"), PhoneNumber("555-0101", "home")))
+    private val sam = Person(2, "k2", "Sam Ortiz", listOf(PhoneNumber("555-0102", "mobile")))
+    private val contacts = listOf(sarah, sam)
 
     @Composable
     private fun AppMenu(app: LauncherApp, isFavorite: Boolean, folder: String?) = HoldMenu(
@@ -317,6 +329,60 @@ class HomeScreenTest {
 
     @Test
     fun searchByFolderName() = render("search_by_folder", dark = true) { Home(view = results("blind"), query = "blind") }
+
+    @Test
+    fun searchWithPeople() = render("search_people", dark = true) {
+        Home(view = results("sa", contacts), query = "sa")
+    }.also { composeRule.onNodeWithText("People").assertIsDisplayed() }
+
+    @Test
+    fun personOpened() = render("search_person_open", dark = false, before = { composeRule.onNodeWithText("Sam Ortiz").performClick() }) {
+        Home(view = results("sam", contacts), query = "sam")
+    }.also {
+        composeRule.onNodeWithContentDescription("Call Sam Ortiz").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Text Sam Ortiz").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Open Sam Ortiz").assertIsDisplayed()
+    }
+
+    @Test
+    fun personOpenedLargeText() = render(
+        "search_person_open_200_percent", dark = true, fontScale = 2f,
+        before = { composeRule.onNodeWithText("Sam Ortiz").performClick() },
+    ) { Home(view = results("sam", contacts), query = "sam") }
+
+    @Test
+    fun personNumberPicker() {
+        var asked: PersonAction? = null
+        render("search_person_numbers", dark = true, before = {
+            composeRule.onNodeWithText("Sarah Lee").performClick()
+            composeRule.onNodeWithContentDescription("Call Sarah Lee").performClick()
+        }) { Home(view = results("sarah", contacts), query = "sarah", onPerson = { asked = it }) }
+        composeRule.onNodeWithContentDescription("Call Sarah Lee, home, 555-0101").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Call Sarah Lee, mobile, 555-0100").performClick()
+        assertEquals(PersonAction.Call("555-0100"), asked)
+    }
+
+    @Test
+    fun tappingCallWithOneNumberDials() {
+        var asked: PersonAction? = null
+        composeRule.setContent { HomeTheme(darkTheme = true) { Home(view = results("sam", contacts), query = "sam", onPerson = { asked = it }) } }
+        composeRule.onNodeWithText("Sam Ortiz").performClick()
+        composeRule.onNodeWithContentDescription("Call Sam Ortiz").performClick()
+        assertEquals(PersonAction.Call("555-0102"), asked)
+        composeRule.onNodeWithContentDescription("Text Sam Ortiz").performClick()
+        assertEquals(PersonAction.Text("555-0102"), asked)
+        composeRule.onNodeWithContentDescription("Open Sam Ortiz").performClick()
+        assertEquals(PersonAction.Open(sam), asked)
+    }
+
+    @Test
+    fun twoPeopleWithTheSameNameReadDifferently() {
+        val otherSam = Person(3, "k3", "Sam Ortiz", listOf(PhoneNumber("555-0199", "work")))
+        render("search_people_same_name", dark = true) { Home(view = results("sam", contacts + otherSam), query = "sam") }
+        composeRule.onNodeWithContentDescription("Sam Ortiz, mobile 555-0102, contact").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sam Ortiz, work 555-0199, contact").performClick()
+        composeRule.onNodeWithContentDescription("Call Sam Ortiz, work 555-0199").assertIsDisplayed()
+    }
 
     @Test
     fun searchNoMatch() = render("search_no_match", dark = true) { Home(view = results("zz"), query = "zz") }

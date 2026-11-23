@@ -38,6 +38,9 @@ import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.HomeSwitch
+import io.github.secnewt.home.apps.People
+import io.github.secnewt.home.apps.Person
+import io.github.secnewt.home.apps.PersonAction
 import io.github.secnewt.home.apps.NewtMood
 import io.github.secnewt.home.apps.Profiles
 import io.github.secnewt.home.apps.Sky
@@ -99,6 +102,8 @@ fun HomeRoute(
     weatherHours: () -> List<WeatherHour> = { emptyList() },
     onOpenWeather: () -> Unit = {},
     onSpeak: (String) -> Unit = {},
+    people: List<Person> = emptyList(),
+    onPerson: (PersonAction) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -114,8 +119,8 @@ fun HomeRoute(
     var addWebsite by rememberSaveable { mutableStateOf(false) }
     var sys by remember { mutableStateOf<SystemInfo?>(null) }
 
-    // Everything starts on (sky colors, the newt, the sky picture, two to a row) but big tiles.
-    fun isOn(what: HomeSwitch): Boolean = switches[what] ?: (what != HomeSwitch.BIG_TILES)
+    // Most start on (sky colors, the newt, the sky picture, two to a row); big tiles and people start off.
+    fun isOn(what: HomeSwitch): Boolean = switches[what] ?: what.defaultOn
 
     fun closeSheets() {
         menuFor = null
@@ -174,10 +179,15 @@ fun HomeRoute(
     val command = remember(query, isList, mathOn) { if (isList) null else Commands.parse(query, calculator = mathOn) }
     // A command word, or the start of one, never opens an app by itself (typing "hel" on the
     // way to "help" mustn't launch an app named Hello); commands only run on Enter or a tap.
+    // People whose name matches (only when people is on; otherwise the list is empty).
+    val found = remember(query, isList, command, people) {
+        if (query.isBlank() || isList || command != null) emptyList() else People.search(people, query)
+    }
     val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
         null
     } else {
-        AppSearch.onlyMatch(results, query, name = { it.name })
+        // Someone whose name has what's typed means nothing opens by itself: `sam` might mean Sam.
+        AppSearch.onlyMatch(results, query, name = { it.name }, othersMatch = People.closeMatch(found, query))
     }
 
     fun runCommand(ready: Command) {
@@ -260,6 +270,7 @@ fun HomeRoute(
                 is CommandMatch.Incomplete -> CommandView(command.hint, ready = false)
                 null -> null
             },
+            people = found,
         )
         else -> HomeView.Favorites
     }
@@ -531,6 +542,10 @@ fun HomeRoute(
             scene = if (isOn(HomeSwitch.SCENE)) Sky.of(hourNow.get(Calendar.HOUR_OF_DAY), weather) else null,
             animateScene = animateBoot,
             twoAcross = isOn(HomeSwitch.TWO_ACROSS),
+            onPerson = { action ->
+                onPerson(action)
+                reset()
+            },
         )
     }
     }

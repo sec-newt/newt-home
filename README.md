@@ -80,6 +80,17 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
 - **Search words.** Press and hold an app and choose **Add search words**, like `bank` or
   `email`, so typing one finds it even when you can't remember its name. Results say
   "your word: bank" so you know why it showed up.
+- **People.** Type `people on` (or use the **People in search** switch at the end of
+  `help`) and typing part of a name also shows people from your contacts, under the apps.
+  Tap a name for **Call** (the number goes in the dialpad; you still press call), **Text**
+  or **Open**. If someone has more than one number, Call and Text ask which one. Newt Home
+  asks for contact access when you turn it on; with no internet, your contacts never leave
+  the phone. A person never opens by itself, and while someone's name has what you typed
+  in it (`sam` for Sam Ortiz), an app doesn't open by itself either. Two people with the
+  same name also show their first number, so you can tell them apart. `people off` hides
+  them again. Without contact access, People switches itself off and says so. `people on`
+  asks again; if Android has stopped asking, turn on Contacts under Settings → Apps →
+  Newt Home → Permissions.
 - **The prompt.** It's on both home and folders. Type part of an app's name, or a folder's name; capitals don't matter.
   While you type, the clock, weather, events and buttons step aside so the results have
   the room the keyboard leaves; clear the prompt and they come back. When only one
@@ -93,6 +104,7 @@ same [house style](https://github.com/sec-newt/newt-phone/blob/main/NEWT_STYLE.m
     shows `[light on]`.
   - `call mom` opens Newt Phone's Contacts with "mom" searched; `call 555 0100` opens
     the dialpad with the number in. You still press call. `call` alone opens the phone app.
+  - `people on` / `people off`: shows or hides people from your contacts as you type.
   - `wifi`, `bluetooth` and `files` open those.
   - `ask what's a good buttermilk substitute` hands the question to the Claude app (or
     lets you pick another app if Claude isn't installed). `ask` on its own opens Claude.
