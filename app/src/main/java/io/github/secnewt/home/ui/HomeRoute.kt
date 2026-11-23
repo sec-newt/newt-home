@@ -186,8 +186,8 @@ fun HomeRoute(
     val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
         null
     } else {
-        // A person matching too means nothing opens by itself: `sam` might mean Sam.
-        AppSearch.onlyMatch(results, query, name = { it.name }, othersMatch = found.isNotEmpty())
+        // Someone whose name has what's typed means nothing opens by itself: `sam` might mean Sam.
+        AppSearch.onlyMatch(results, query, name = { it.name }, othersMatch = People.closeMatch(found, query))
     }
 
     fun runCommand(ready: Command) {

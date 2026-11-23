@@ -12,7 +12,7 @@ import android.provider.ContactsContract.CommonDataKinds.Phone
 class ContactRepository(private val context: Context) {
 
     fun people(): List<Person> = try {
-        val projection = arrayOf(Phone.CONTACT_ID, Phone.LOOKUP_KEY, Phone.DISPLAY_NAME_PRIMARY, Phone.NUMBER, Phone.TYPE, Phone.LABEL)
+        val projection = arrayOf(Phone.CONTACT_ID, Phone.LOOKUP_KEY, Phone.DISPLAY_NAME_PRIMARY, Phone.NUMBER, Phone.TYPE, Phone.LABEL, Phone.DISPLAY_NAME_SOURCE)
         val rows = mutableListOf<ContactRow>()
         context.contentResolver.query(Phone.CONTENT_URI, projection, null, null, "${Phone.DISPLAY_NAME_PRIMARY} COLLATE NOCASE")?.use { c ->
             while (c.moveToNext()) {
@@ -23,6 +23,7 @@ class ContactRepository(private val context: Context) {
                     number = c.getString(3),
                     type = c.getInt(4),
                     label = c.getString(5),
+                    nameSource = c.getInt(6),
                 )
             }
         }

@@ -10,8 +10,19 @@ data class PhoneNumber(val number: String, val type: String)
 @Immutable
 data class Person(val id: Long, val lookupKey: String, val name: String, val numbers: List<PhoneNumber>)
 
-/** One phone number row as the phone's contacts hand it over; a person with two numbers has two rows. */
-data class ContactRow(val id: Long, val lookupKey: String, val name: String?, val number: String?, val type: Int, val label: String?)
+/**
+ * One phone number row as the phone's contacts hand it over; a person with two numbers has two
+ * rows. [nameSource] is where the name came from (`ContactsContract.DisplayNameSources`).
+ */
+data class ContactRow(
+    val id: Long,
+    val lookupKey: String,
+    val name: String?,
+    val number: String?,
+    val type: Int,
+    val label: String?,
+    val nameSource: Int,
+)
 
 /** What a tap on a person's buttons asks for. Nothing calls by itself: [Call] fills in the dialpad. */
 sealed interface PersonAction {
@@ -28,9 +39,10 @@ object People {
     /**
      * Groups rows by contact, in the order given. Names are trimmed; contacts with no name or
      * no number are left out, and the same number saved twice in different formats counts once.
+     * With no name, Android shows the number or email as one; those are left out too.
      */
     fun fromRows(rows: List<ContactRow>): List<Person> =
-        rows.groupBy { it.id }.mapNotNull { (id, group) ->
+        rows.filter { it.nameSource >= REAL_NAME }.groupBy { it.id }.mapNotNull { (id, group) ->
             val name = group.firstNotNullOfOrNull { it.name?.trim()?.ifEmpty { null } } ?: return@mapNotNull null
             val numbers = group
                 .mapNotNull { row -> row.number?.trim()?.ifEmpty { null }?.let { PhoneNumber(it, typeWord(row.type, row.label)) } }
@@ -50,6 +62,17 @@ object People {
     /** People whose name matches what's typed, with the same loose matching as apps. */
     fun search(people: List<Person>, query: String): List<Person> =
         AppSearch.search(people, query, name = { it.name }).map { it.item }.take(MAX)
+
+    /**
+     * Whether someone has what's typed together in their name (`sam`, `ortiz`), the same bar
+     * an app needs to open by itself. Then no app opens by itself; letters only scattered
+     * through a name are too loose to count, as with apps.
+     */
+    fun closeMatch(people: List<Person>, query: String): Boolean =
+        people.any { AppSearch.match(it.name, query)?.let { m -> m.rank >= AppSearch.Match.INSIDE.rank } == true }
+
+    /** `DisplayNameSources.ORGANIZATION`: a company name or better; below it is an email or number. */
+    private const val REAL_NAME = 30
 
     private fun digits(number: String): String = number.filter { it.isDigit() || it == '+' }
 }

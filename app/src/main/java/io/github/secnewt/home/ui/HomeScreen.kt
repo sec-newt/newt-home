@@ -1634,7 +1634,6 @@ fun AppIcon(app: LauncherApp, size: Dp = 34.dp) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 /** "People" above the contacts that match, in both looks; a heading for TalkBack. */
 @Composable
 private fun PeopleHeading() {
@@ -1728,6 +1727,7 @@ private fun PersonRow(person: Person, onPerson: (PersonAction) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppRow(
     app: LauncherApp,
