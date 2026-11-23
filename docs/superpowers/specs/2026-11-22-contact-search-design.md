@@ -34,10 +34,12 @@ people
   Lee", "Open Sarah Lee", so nothing reads the same.
 
 ## Rules
-- **Off until you switch it on.** `contacts on` / `contacts off`, and a "People in search"
+- **Off until you switch it on.** `people on` / `people off`, and a "People in search"
   switch at the end of `help`. Android asks for contact access the first time you switch it
   on. If you say no, a line explains how to turn it on in Settings, as calendar does now.
-  `contacts` alone isn't a command, so a Contacts app still opens.
+  The word is `people`, not `contacts`: a command word stops apps starting the same way
+  from opening by themselves, and a Contacts app is common. If you say no to access, the
+  switch goes back off.
 - **A contact never opens by itself.** If a contact matches, the "only one app matches, opens
   by itself" timer doesn't run, so typing `sam` can't launch an app when you meant Sam.
 - Names and numbers are read into memory only, never saved, and reread when contacts change.
