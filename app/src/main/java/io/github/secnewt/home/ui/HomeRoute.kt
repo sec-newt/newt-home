@@ -38,6 +38,7 @@ import io.github.secnewt.home.apps.SystemInfo
 import io.github.secnewt.home.apps.ProfileKind
 import io.github.secnewt.home.apps.ProfileView
 import io.github.secnewt.home.apps.HomeSwitch
+import io.github.secnewt.home.apps.People
 import io.github.secnewt.home.apps.Person
 import io.github.secnewt.home.apps.PersonAction
 import io.github.secnewt.home.apps.NewtMood
@@ -178,10 +179,15 @@ fun HomeRoute(
     val command = remember(query, isList, mathOn) { if (isList) null else Commands.parse(query, calculator = mathOn) }
     // A command word, or the start of one, never opens an app by itself (typing "hel" on the
     // way to "help" mustn't launch an app named Hello); commands only run on Enter or a tap.
+    // People whose name matches (only when people is on; otherwise the list is empty).
+    val found = remember(query, isList, command, people) {
+        if (query.isBlank() || isList || command != null) emptyList() else People.search(people, query)
+    }
     val opening = if (query.isBlank() || isList || command != null || Commands.mightBecomeCommand(query)) {
         null
     } else {
-        AppSearch.onlyMatch(results, query, name = { it.name })
+        // A person matching too means nothing opens by itself: `sam` might mean Sam.
+        AppSearch.onlyMatch(results, query, name = { it.name }, othersMatch = found.isNotEmpty())
     }
 
     fun runCommand(ready: Command) {
@@ -264,6 +270,7 @@ fun HomeRoute(
                 is CommandMatch.Incomplete -> CommandView(command.hint, ready = false)
                 null -> null
             },
+            people = found,
         )
         else -> HomeView.Favorites
     }
@@ -535,6 +542,10 @@ fun HomeRoute(
             scene = if (isOn(HomeSwitch.SCENE)) Sky.of(hourNow.get(Calendar.HOUR_OF_DAY), weather) else null,
             animateScene = animateBoot,
             twoAcross = isOn(HomeSwitch.TWO_ACROSS),
+            onPerson = { action ->
+                onPerson(action)
+                reset()
+            },
         )
     }
     }

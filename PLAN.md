@@ -181,6 +181,7 @@ Every option is a word with one plain line under it saying what it changes. No u
   - [x] "3 unread" under Newt Messages
   - [x] Math and conversions at the prompt
   - [x] Sky picture behind the home screen, and two favorites to a row at big text
+  - [x] People in search: call, text or open someone from the prompt (`people on`)
 - [ ] Next ideas: `alias` and ▶ command tiles in favorites, `fg` / back to the last app, a verse when you unlock, bedside mode while charging
 
 ## GrapheneOS notes

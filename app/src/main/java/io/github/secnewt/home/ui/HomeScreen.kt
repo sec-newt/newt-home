@@ -55,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -127,6 +128,8 @@ import androidx.compose.ui.unit.sp
 import io.github.secnewt.home.apps.Agenda
 import io.github.secnewt.home.apps.AgendaText
 import io.github.secnewt.home.apps.AppSearch
+import io.github.secnewt.home.apps.PersonAction
+import io.github.secnewt.home.apps.Person
 import io.github.secnewt.home.apps.Connection
 import io.github.secnewt.home.apps.DeviceStatus
 import io.github.secnewt.home.apps.LauncherApp
@@ -156,6 +159,8 @@ sealed interface HomeView {
         val query: String,
         val results: List<AppSearch.Result<LauncherApp>>,
         val command: CommandView? = null,
+        /** People from your contacts whose name matches, when people is on. */
+        val people: List<Person> = emptyList(),
     ) : HomeView
 }
 
@@ -262,6 +267,7 @@ fun HomeScreen(
     scene: SkyTone? = null,
     animateScene: Boolean = false,
     twoAcross: Boolean = true,
+    onPerson: (PersonAction) -> Unit = {},
 ) {
     // Folders and home sit side by side; all apps slides up over them.
     val pager = rememberPagerState(initialPage = if (screen == Screen.FOLDERS) 0 else 1) { 2 }
@@ -291,7 +297,7 @@ fun HomeScreen(
                     if (page == 0) {
                         FoldersPage(
                             folders, openFolder, onOpen, onHold, onToggleFolder, onHoldFolder, onNewFolder,
-                            view, query, opening, onQueryChange, onSubmit, onVoice, folderOf, isHidden, showButtons,
+                            view, query, opening, onQueryChange, onSubmit, onVoice, folderOf, isHidden, showButtons, onPerson,
                         ) {
                             onScreen(Screen.HOME)
                         }
@@ -301,7 +307,7 @@ fun HomeScreen(
                             onClock, onDate, folderOf, bootKey, animateBoot, onScreen,
                             agenda, now, time, onAgendaChoice, onFixCalendar, onDateHold, isHidden, onVoice,
                             weather, onWeather, headsUp, onHearWeather, showButtons,
-                            newtMood, bigTiles, onStatusTap, scene, animateScene, twoAcross,
+                            newtMood, bigTiles, onStatusTap, scene, animateScene, twoAcross, onPerson,
                         )
                     }
                 }
@@ -355,6 +361,7 @@ private fun HomePage(
     scene: SkyTone?,
     animateScene: Boolean,
     twoAcross: Boolean,
+    onPerson: (PersonAction) -> Unit,
 ) {
     // While typing, the results get all the room the keyboard leaves: the clock, weather,
     // events and buttons step aside until the prompt is cleared.
@@ -461,7 +468,7 @@ private fun HomePage(
                         items(favorites, key = { it.key }) { AppRow(it, onOpen = onOpen, onHold = onHold) }
                     }
                 }
-                is HomeView.Results -> resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden)
+                is HomeView.Results -> resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden, onPerson)
             }
         }
         if (showButtons && !typing) {
@@ -475,7 +482,7 @@ private fun HomePage(
     }
 }
 
-/** What's typed at the prompt: a command first if it is one, then the matching apps. */
+/** What's typed at the prompt: a command first if it is one, then the matching apps, then people. */
 private fun LazyListScope.resultItems(
     view: HomeView.Results,
     opening: LauncherApp?,
@@ -484,13 +491,14 @@ private fun LazyListScope.resultItems(
     onHold: (LauncherApp) -> Unit,
     folderOf: (LauncherApp) -> String?,
     isHidden: (LauncherApp) -> Boolean,
+    onPerson: (PersonAction) -> Unit,
 ) {
     val command = view.command
     if (command != null) {
         item(key = "command") { CommandRow(view.query.trim(), command, onSubmit) }
     }
     item { PromptLine("find ${view.query.trim()}", title = if (view.results.isEmpty()) null else "Apps") }
-    if (view.results.isEmpty() && command == null) {
+    if (view.results.isEmpty() && view.people.isEmpty() && command == null) {
         item { Hint("# no app matches “${view.query.trim()}”") }
     }
     itemsIndexed(view.results, key = { _, r -> r.item.key }) { i, r ->
@@ -513,6 +521,10 @@ private fun LazyListScope.resultItems(
             onHold = onHold,
         )
     }
+    if (view.people.isNotEmpty()) {
+        item(key = "people") { PeopleHeading() }
+        items(view.people, key = { "person:${it.id}" }) { person -> PersonRow(person, onPerson) }
+    }
 }
 
 @Composable
@@ -533,6 +545,7 @@ private fun FoldersPage(
     folderOf: (LauncherApp) -> String?,
     isHidden: (LauncherApp) -> Boolean,
     showButtons: Boolean,
+    onPerson: (PersonAction) -> Unit,
     onHome: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -544,7 +557,7 @@ private fun FoldersPage(
         ) {
             // Typing here searches the same as on home; the tree comes back when it's cleared.
             if (view is HomeView.Results) {
-                resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden)
+                resultItems(view, opening, onSubmit, onOpen, onHold, folderOf, isHidden, onPerson)
                 return@LazyColumn
             }
             item { PromptLine("tree", short = true, title = "Folders") }
@@ -1622,6 +1635,99 @@ fun AppIcon(app: LauncherApp, size: Dp = 34.dp) {
 }
 
 @OptIn(ExperimentalFoundationApi::class)
+/** "People" above the contacts that match, in both looks; a heading for TalkBack. */
+@Composable
+private fun PeopleHeading() {
+    val clean = cleanLook()
+    Text(
+        "People",
+        fontFamily = if (clean) NewtFonts.Display else NewtFonts.Mono,
+        fontWeight = FontWeight.Bold,
+        fontSize = if (clean) 19.sp else 16.sp,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = 4.dp, top = 16.dp, bottom = 6.dp)
+            .semantics { heading() },
+    )
+}
+
+/**
+ * Someone from your contacts. A tap shows Call, Text and Open under the name (under, not
+ * beside, so they still fit at big text sizes). With more than one number, Call and Text
+ * ask which one first. Nothing happens by itself, and Call only fills in the dialpad.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PersonRow(person: Person, onPerson: (PersonAction) -> Unit) {
+    val clean = cleanLook()
+    val shape = RoundedCornerShape(if (clean) 14.dp else 10.dp)
+    val interactions = remember { MutableInteractionSource() }
+    var open by rememberSaveable(person.id) { mutableStateOf(false) }
+    // Which button is asking for a number: "Call" or "Text", or null for the three buttons.
+    var picking by rememberSaveable(person.id) { mutableStateOf<String?>(null) }
+    val name = person.name
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (clean) 60.dp else 48.dp)
+                .glow(pressed(interactions), MaterialTheme.colorScheme.primary, neonOutline(), shape)
+                .clip(shape)
+                .then(if (open) Modifier.border(neonOutline(), shape) else Modifier)
+                .clickable(
+                    interactionSource = interactions,
+                    indication = LocalIndication.current,
+                    onClickLabel = if (open) "Hide call, text and open" else "Show call, text and open",
+                ) {
+                    open = !open
+                    picking = null
+                }
+                .semantics(mergeDescendants = true) { contentDescription = "$name, contact" }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                name,
+                fontFamily = rowFont(),
+                fontWeight = if (clean) FontWeight.Bold else null,
+                fontSize = if (clean) 21.sp else 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        if (open) {
+            val choosing = picking
+            if (choosing == null) {
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val buttons = Modifier.heightIn(min = 56.dp).widthIn(min = 96.dp)
+                    NavButton("Call", "Call $name", buttons) {
+                        if (person.numbers.size == 1) onPerson(PersonAction.Call(person.numbers[0].number)) else picking = "Call"
+                    }
+                    NavButton("Text", "Text $name", buttons) {
+                        if (person.numbers.size == 1) onPerson(PersonAction.Text(person.numbers[0].number)) else picking = "Text"
+                    }
+                    NavButton("Open", "Open $name", buttons) { onPerson(PersonAction.Open(person)) }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    person.numbers.forEach { phone ->
+                        val label = if (phone.type.isEmpty()) phone.number else "${phone.type} · ${phone.number}"
+                        NavButton(label, "$choosing $name, " + listOf(phone.type, phone.number).filter { it.isNotEmpty() }.joinToString(", "), Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                            onPerson(if (choosing == "Call") PersonAction.Call(phone.number) else PersonAction.Text(phone.number))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppRow(
     app: LauncherApp,
