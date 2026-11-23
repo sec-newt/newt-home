@@ -102,6 +102,13 @@ class AppSearchTest {
         // Your word alone never opens an app by itself.
         assertNull(AppSearch.onlyMatch(find("chat"), "chat"))
     }
+
+    @Test
+    fun `a person matching too stops the only app opening`() {
+        val results = AppSearch.search(apps, "sig", name = { it })
+        assertEquals("Signal", AppSearch.onlyMatch(results, "sig", othersMatch = false))
+        assertNull(AppSearch.onlyMatch(results, "sig", othersMatch = true))
+    }
 }
 
 class FavoritesTest {

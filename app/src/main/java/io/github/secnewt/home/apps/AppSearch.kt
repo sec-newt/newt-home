@@ -105,10 +105,13 @@ object AppSearch {
      *
      * A query of only digits opens an app only when the digits are its whole first word
      * ("42" opens 42, "2048" opens 2048), so "20" on the way to "20 x 3" doesn't open 2048.
+     *
+     * [othersMatch]: something else matches too, like a person from your contacts, so
+     * nothing opens by itself (typing `sam` can't launch an app when you meant Sam).
      */
-    fun <T> onlyMatch(results: List<Result<T>>, query: String, name: ((T) -> String)? = null): T? {
+    fun <T> onlyMatch(results: List<Result<T>>, query: String, name: ((T) -> String)? = null, othersMatch: Boolean = false): T? {
         val q = normalize(query)
-        if (q.length < 2) return null
+        if (othersMatch || q.length < 2) return null
         val only = results.filter { it.match.rank >= Match.INSIDE.rank }.singleOrNull()?.item ?: return null
         if (name != null && q.all { it.isDigit() } && normalize(name(only)).split(' ').first() != q) return null
         return only
