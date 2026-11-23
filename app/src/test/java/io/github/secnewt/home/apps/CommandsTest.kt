@@ -1,6 +1,7 @@
 package io.github.secnewt.home.apps
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -149,6 +150,18 @@ class CommandsTest {
         assertEquals(Command.Switch(HomeSwitch.TWO_ACROSS, true), ready("columns 2"))
         assertEquals(Command.Switch(HomeSwitch.TWO_ACROSS, false), ready("columns off"))
         assertTrue(Commands.parse("columns") is CommandMatch.Incomplete)
+    }
+
+    @Test
+    fun `people switch shows contacts in search, off until switched on`() {
+        assertEquals(Command.Switch(HomeSwitch.PEOPLE, true), ready("people on"))
+        assertEquals(Command.Switch(HomeSwitch.PEOPLE, false), ready("People Off"))
+        assertFalse(HomeSwitch.PEOPLE.defaultOn)
+        assertFalse(HomeSwitch.BIG_TILES.defaultOn)
+        assertTrue(HomeSwitch.SKY.defaultOn)
+        val time = { _: Int, _: Int -> "" }
+        assertEquals("show people from your contacts when you type", Commands.describe(Command.Switch(HomeSwitch.PEOPLE, true), time))
+        assertEquals("stop showing people when you type", Commands.describe(Command.Switch(HomeSwitch.PEOPLE, false), time))
     }
 
     @Test

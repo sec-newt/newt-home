@@ -48,13 +48,24 @@ sealed interface Command {
  * (`sky` might be the start of an app's name), and the newt's word is `pet`, since every
  * Newt app starts with "newt".
  */
-enum class HomeSwitch(val word: String, val title: String, val hint: String, val onWord: String, val offWord: String) {
+enum class HomeSwitch(
+    val word: String,
+    val title: String,
+    val hint: String,
+    val onWord: String,
+    val offWord: String,
+    /** Whether it starts on before you ever switch it. */
+    val defaultOn: Boolean = true,
+) {
     SKY("sky", "Sky colors", "Outlines follow the time of day and the weather", "on", "off"),
     NEWT("pet", "Newt by the clock", "Clean look: shows how the phone and the day are going", "on", "off"),
-    BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small"),
+    BIG_TILES("tiles", "Big tiles", "Clean look: taller favorites, icon above the name", "big", "small", defaultOn = false),
     MATH("answers", "Math answers", "Answers math and conversions as you type, like 5 km to mi", "on", "off"),
     SCENE("scene", "Sky picture", "Clean dark look: northern lights, sun, rain or snow behind the home screen", "on", "off"),
     TWO_ACROSS("columns", "Two favorites to a row", "Clean look: two to a row even at big text sizes", "2", "1"),
+
+    /** Off until you switch it on: it needs contact access. Not `contacts`, so a Contacts app still opens by itself. */
+    PEOPLE("people", "People in search", "Shows people from your contacts as you type, to call, text or open", "on", "off", defaultOn = false),
 }
 
 private val NUMBER = Regex("""\+?[\d\s().\-*#]*\d[\d\s().\-*#]*""")
@@ -90,6 +101,7 @@ object Commands {
         CommandHelp("350 f", "A number and a unit converts the usual way: °F to °C, cups to milliliters, km to miles", HelpTopic.MATH),
         CommandHelp("flashlight", "Turns the flashlight on or off. Also torch", HelpTopic.PHONE),
         CommandHelp("call mom", "Finds Mom in Newt Phone's contacts. A number is dialed, ready to call", HelpTopic.PEOPLE),
+        CommandHelp("people on", "Shows people from your contacts as you type. people off hides them", HelpTopic.PEOPLE),
         CommandHelp("wifi", "Wi-Fi on or off and networks", HelpTopic.PHONE),
         CommandHelp("bluetooth", "Bluetooth settings", HelpTopic.PHONE),
         CommandHelp("files", "Opens your files app", HelpTopic.APPS),
@@ -293,6 +305,11 @@ object Commands {
                 true -> "answer math and conversions as you type"
                 false -> "stop answering math and conversions"
                 null -> "switch math answers on or off"
+            }
+            HomeSwitch.PEOPLE -> when (command.on) {
+                true -> "show people from your contacts when you type"
+                false -> "stop showing people when you type"
+                null -> "show or hide people when you type"
             }
         }
         is Command.Answer -> "= ${command.shown}"
